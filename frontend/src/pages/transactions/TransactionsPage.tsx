@@ -211,7 +211,7 @@ export function TransactionsPage() {
         )}
 
         {/* Load more */}
-        {data && page < data.totalPages && (
+        {data && page < data.meta?.totalPages && (
           <div className="p-4 text-center border-t border-black/[0.05]">
             <button className="btn btn-ghost btn-sm" onClick={() => setPage(page + 1)}>
               Load more

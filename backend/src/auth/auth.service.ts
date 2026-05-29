@@ -102,8 +102,19 @@ export class AuthService {
     return user;
   }
 
+  async revokeRefreshToken(token: string) {
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash: hash, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
   private async issueTokens(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, lastName: true, isVerified: true },
+    });
     const accessToken = this.jwt.sign(
       { sub: userId, email: user.email },
       { expiresIn: this.config.get('JWT_ACCESS_TTL') || '15m' },
@@ -114,7 +125,7 @@ export class AuthService {
     await this.prisma.refreshToken.create({
       data: { userId, tokenHash: refreshHash, expiresAt: new Date(Date.now() + ttl) },
     });
-    return { accessToken, refreshToken: rawRefresh };
+    return { accessToken, refreshToken: rawRefresh, user };
   }
 
   private async sendVerificationEmail(userId: string, email: string, firstName: string) {

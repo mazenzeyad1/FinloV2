@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app/app.module';
 import { AppExceptionFilter } from './common/errors/app-exception.filter';
@@ -18,6 +19,9 @@ async function bootstrap() {
   // Exception filter
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AppExceptionFilter(httpAdapter));
+
+  // Cookie parser — must come before route handlers
+  app.use(cookieParser());
 
   // CORS — raw middleware so preflight is handled before anything else touches the response
   app.use((req: any, res: any, next: any) => {

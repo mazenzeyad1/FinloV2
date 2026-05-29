@@ -3,6 +3,8 @@ import { useAuthStore } from './store/auth.store'
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken)
+  const initialized = useAuthStore((s) => s.initialized)
+  if (!initialized) return null
   if (!token) return <Navigate to="/login" replace />
   return <>{children}</>
 }

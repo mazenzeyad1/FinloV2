@@ -4,13 +4,14 @@ import { api } from '../lib/api'
 import { useAuthStore } from '../store/auth.store'
 
 export function useLogin() {
-  const { setTokens, setUser } = useAuthStore()
+  const setAccessToken = useAuthStore((s) => s.setAccessToken)
+  const setUser = useAuthStore((s) => s.setUser)
   const nav = useNavigate()
   return useMutation({
     mutationFn: (d: { email: string; password: string }) =>
       api.post('/auth/login', d).then((r) => r.data),
     onSuccess: async (data) => {
-      setTokens(data.accessToken, data.refreshToken)
+      setAccessToken(data.accessToken)
       const me = await api.get('/auth/me').then((r) => r.data)
       setUser(me)
       nav('/dashboard')
@@ -41,5 +42,10 @@ export function useMe() {
 export function useLogout() {
   const { logout } = useAuthStore()
   const nav = useNavigate()
-  return () => { logout(); nav('/login') }
+  return () => {
+    api.post('/auth/logout').finally(() => {
+      logout()
+      nav('/login')
+    })
+  }
 }

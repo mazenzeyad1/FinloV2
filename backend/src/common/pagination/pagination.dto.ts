@@ -1,16 +1,16 @@
 import { IsOptional, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * Base pagination query DTO - extend this in feature DTOs
- */
 export class PaginationQueryDto {
+  @ApiPropertyOptional({ example: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
+  @ApiPropertyOptional({ example: 20, default: 20 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -19,9 +19,6 @@ export class PaginationQueryDto {
   pageSize?: number = 20;
 }
 
-/**
- * Paginated response wrapper
- */
 export class PaginatedResponseDto<T> {
   data: T[];
   meta: {
@@ -47,9 +44,6 @@ export class PaginatedResponseDto<T> {
   }
 }
 
-/**
- * Helper function to calculate skip/take for Prisma
- */
 export function calculateSkipTake(page: number = 1, pageSize: number = 20) {
   return {
     skip: (page - 1) * pageSize,

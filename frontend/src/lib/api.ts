@@ -1,16 +1,16 @@
 import axios from 'axios'
+import { useAuthStore } from '../store/auth.store'
+
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: BASE,
   withCredentials: true,
 })
 
 api.interceptors.request.use((config) => {
-  const raw = localStorage.getItem('finlo.auth')
-  if (raw) {
-    const { state } = JSON.parse(raw)
-    if (state?.accessToken) config.headers.Authorization = `Bearer ${state.accessToken}`
-  }
+  const token = useAuthStore.getState().accessToken
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
@@ -21,30 +21,19 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !original._retry) {
       original._retry = true
       try {
-        const raw = localStorage.getItem('finlo.auth')
-        if (!raw) return Promise.reject(err)
-        const { state } = JSON.parse(raw)
-        if (!state?.refreshToken) return Promise.reject(err)
-        const { data } = await axios.post(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/refresh`,
-          { refreshToken: state.refreshToken }
-        )
-        const stored = JSON.parse(localStorage.getItem('finlo.auth') || '{}')
-        stored.state.accessToken = data.accessToken
-        stored.state.refreshToken = data.refreshToken
-        localStorage.setItem('finlo.auth', JSON.stringify(stored))
+        const { data } = await axios.post(`${BASE}/auth/refresh`, {}, { withCredentials: true })
+        useAuthStore.getState().setAccessToken(data.accessToken)
         original.headers.Authorization = `Bearer ${data.accessToken}`
         return api(original)
       } catch {
-        localStorage.removeItem('finlo.auth')
+        useAuthStore.getState().logout()
         window.location.href = '/login'
       }
     }
 
-    // Handle standardized error format
     if (err.response?.data?.error) {
       const { error } = err.response.data
-      const customError = new Error(error.message || 'An error occurred')
+      const customError = new Error(error.message || 'An error occurred') as any
       customError.code = error.code
       customError.details = error.details
       customError.timestamp = error.timestamp
