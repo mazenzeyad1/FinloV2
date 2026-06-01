@@ -9,10 +9,11 @@ import { JwtAuthGuard } from './guards/jwt.guard';
 import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
 
 const COOKIE_NAME = 'finlo_refresh';
+const isProd = process.env.NODE_ENV === 'production';
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  secure: isProd,
+  sameSite: isProd ? 'none' as const : 'lax' as const,
   maxAge: 30 * 24 * 60 * 60 * 1000,
   path: '/api/auth/refresh',
 };
@@ -55,7 +56,7 @@ export class AuthController {
   async logout(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[COOKIE_NAME];
     if (token) await this.authService.revokeRefreshToken(token);
-    res.clearCookie(COOKIE_NAME, { path: '/api/auth/refresh' });
+    res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
     return { ok: true };
   }
 

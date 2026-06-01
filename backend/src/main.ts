@@ -8,10 +8,9 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app/app.module';
 import { AppExceptionFilter } from './common/errors/app-exception.filter';
 
-const ALLOWED_ORIGINS = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-];
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
+  : ['http://localhost:5173', 'http://localhost:5174']);
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, new ExpressAdapter());
