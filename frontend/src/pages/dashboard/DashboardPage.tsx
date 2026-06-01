@@ -6,6 +6,7 @@ import { useTransactions, useTransactionSummary } from '../../hooks/useTransacti
 import { MetricCard } from '../../components/ui/MetricCard'
 import { SpendingChart } from '../../components/charts/SpendingChart'
 import { DonutChart } from '../../components/charts/DonutChart'
+import { ErrorBoundary } from '../../components/ui/ErrorBoundary'
 
 const CAD = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' })
 
@@ -91,13 +92,16 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="card p-5">
-          <p className="text-[13px] font-semibold text-text-1 mb-4">Spending — last 7 days</p>
-          <SpendingChart data={chartData} />
-        </div>
-        <div className="card p-5">
-          <p className="text-[13px] font-semibold text-text-1 mb-4">Spend by category — this month</p>
-          {donutData.length > 0 ? (
+        <ErrorBoundary>
+          <div className="card p-5">
+            <p className="text-[13px] font-semibold text-text-1 mb-4">Spending — last 7 days</p>
+            <SpendingChart data={chartData} />
+          </div>
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <div className="card p-5">
+            <p className="text-[13px] font-semibold text-text-1 mb-4">Spend by category — this month</p>
+            {donutData.length > 0 ? (
             <>
               <DonutChart data={donutData} />
               <div className="mt-3 space-y-1.5">
@@ -117,7 +121,8 @@ export function DashboardPage() {
               No transactions this week
             </div>
           )}
-        </div>
+          </div>
+        </ErrorBoundary>
       </div>
 
       <div className="card p-5">

@@ -14,6 +14,10 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Single shared promise while a refresh is in-flight so concurrent 401s
+// don't each fire their own /refresh and race-revoke each other's tokens.
+let refreshing: Promise<string> | null = null
+
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -21,9 +25,17 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !original._retry) {
       original._retry = true
       try {
-        const { data } = await axios.post(`${BASE}/auth/refresh`, {}, { withCredentials: true })
-        useAuthStore.getState().setAccessToken(data.accessToken)
-        original.headers.Authorization = `Bearer ${data.accessToken}`
+        if (!refreshing) {
+          refreshing = axios
+            .post<{ accessToken: string }>(`${BASE}/auth/refresh`, {}, { withCredentials: true })
+            .then(({ data }) => {
+              useAuthStore.getState().setAccessToken(data.accessToken)
+              return data.accessToken
+            })
+            .finally(() => { refreshing = null })
+        }
+        const accessToken = await refreshing
+        original.headers.Authorization = `Bearer ${accessToken}`
         return api(original)
       } catch {
         useAuthStore.getState().logout()

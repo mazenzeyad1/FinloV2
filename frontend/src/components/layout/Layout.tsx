@@ -8,6 +8,7 @@ import {
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '../../store/auth.store'
+import { ErrorBoundary } from '../ui/ErrorBoundary'
 
 const navItems = [
   { to: '/dashboard',    label: 'Dashboard',    Icon: HomeIcon },
@@ -88,7 +89,9 @@ export function Layout() {
       {/* Page content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto p-7">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

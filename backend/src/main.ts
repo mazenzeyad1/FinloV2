@@ -19,11 +19,7 @@ async function bootstrap() {
   // Exception filter
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AppExceptionFilter(httpAdapter));
-
-  // Cookie parser — must come before route handlers
-  app.use(cookieParser());
-
-  // CORS — raw middleware so preflight is handled before anything else touches the response
+// CORS — raw middleware so preflight is handled before anything else touches the response
   app.use((req: any, res: any, next: any) => {
     const origin = req.headers.origin;
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
@@ -33,12 +29,17 @@ async function bootstrap() {
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin,X-Requested-With');
-    res.setHeader('Access-Control-Max-Age', '3600');
+    res.setHeader('Access-Control-Max-Age', '0');
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
     }
     next();
   });
+
+  // Cookie parser — must come before route handlers
+  app.use(cookieParser());
+
+  
 
   // Security headers
   app.use(helmet({
@@ -54,7 +55,7 @@ async function bootstrap() {
     noSniff: true,
     xssFilter: true,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginResourcePolicy: false,
   }));
 
   // Global validation pipe

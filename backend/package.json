@@ -11,6 +11,7 @@
     "test:cov": "jest --coverage",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
+    "prisma:seed": "ts-node --project prisma/tsconfig.json prisma/seed.ts",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
