@@ -1,44 +1,79 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PlaidService } from '../providers/plaid/plaid.service';
+import { AiCategorizerService } from '../common/ai/ai-categorizer.service';
 import { format, subDays } from 'date-fns';
 import { Transaction } from 'plaid';
 
 // Plaid personal_finance_category.detailed → our category name
 const PLAID_DETAILED_MAP: Record<string, string> = {
-  FOOD_AND_DRINK_COFFEE:                       'Coffee',
-  FOOD_AND_DRINK_FAST_FOOD:                    'Takeout',
-  FOOD_AND_DRINK_RESTAURANTS:                  'Dining Out',
-  FOOD_AND_DRINK_GROCERY:                      'Groceries',
-  FOOD_AND_DRINK_GROCERIES:                    'Groceries',
-  FOOD_AND_DRINK_VENDING_MACHINES:             'Takeout',
-  TRANSPORTATION_TAXIS_AND_RIDE_SHARES:        'Rideshare',
-  TRANSPORTATION_GAS_AND_CONVENIENCE:          'Gas',
-  TRANSPORTATION_PUBLIC_TRANSIT:               'Transit',
-  TRANSPORTATION_PARKING:                      'Parking',
-  RENT_AND_UTILITIES_RENT:                     'Rent',
-  RENT_AND_UTILITIES_MORTGAGES:                'Mortgage',
-  RENT_AND_UTILITIES_GAS:                      'Utilities',
-  RENT_AND_UTILITIES_ELECTRICITY:              'Utilities',
-  RENT_AND_UTILITIES_WATER:                    'Utilities',
-  RENT_AND_UTILITIES_INTERNET_AND_CABLE:       'Internet',
-  RENT_AND_UTILITIES_TELEPHONE:                'Internet',
-  ENTERTAINMENT_TV_AND_MOVIES:                 'Streaming',
-  ENTERTAINMENT_MUSIC_AND_AUDIO:               'Music',
-  ENTERTAINMENT_VIDEO_GAMES:                   'Games',
-  GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES:'Clothing',
-  GENERAL_MERCHANDISE_ELECTRONICS:             'Electronics',
-  GENERAL_MERCHANDISE_GROCERIES:               'Groceries',
-  GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS:'Books',
-  MEDICAL_PHARMACIES_AND_SUPPLEMENTS:          'Pharmacy',
-  MEDICAL_DENTIST:                             'Dental',
-  MEDICAL_DOCTOR:                              'Doctor',
-  MEDICAL_GYMS_AND_FITNESS_CENTERS:            'Gym',
-  PERSONAL_CARE_HAIR_AND_BEAUTY:               'Personal Care',
-  INCOME_WAGES:                                'Salary',
-  INCOME_OTHER_INCOME:                         'Freelance',
-  LOAN_PAYMENTS_CREDIT_CARD_PAYMENT:           'Credit Card',
-  LOAN_PAYMENTS_MORTGAGE_PAYMENT:              'Loan Payment',
+  FOOD_AND_DRINK_COFFEE:                                    'Coffee',
+  FOOD_AND_DRINK_FAST_FOOD:                                 'Takeout',
+  FOOD_AND_DRINK_RESTAURANTS:                               'Dining Out',
+  FOOD_AND_DRINK_RESTAURANT:                                'Dining Out',
+  FOOD_AND_DRINK_GROCERY:                                   'Groceries',
+  FOOD_AND_DRINK_GROCERIES:                                 'Groceries',
+  FOOD_AND_DRINK_VENDING_MACHINES:                          'Takeout',
+  FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK:                      'Dining Out',
+  TRANSPORTATION_TAXIS_AND_RIDE_SHARES:                     'Rideshare',
+  TRANSPORTATION_GAS_AND_CONVENIENCE:                       'Gas',
+  TRANSPORTATION_PUBLIC_TRANSIT:                            'Transit',
+  TRANSPORTATION_PARKING:                                   'Parking',
+  TRANSPORTATION_AIRLINES_AND_AVIATION_SERVICES:            'Miscellaneous',
+  TRANSPORTATION_CAR_DEALERS_AND_LEASING:                   'Car Payment',
+  TRANSPORTATION_OTHER_TRANSPORTATION:                      'Transit',
+  RENT_AND_UTILITIES_RENT:                                  'Rent',
+  RENT_AND_UTILITIES_MORTGAGES:                             'Mortgage',
+  RENT_AND_UTILITIES_GAS:                                   'Utilities',
+  RENT_AND_UTILITIES_ELECTRICITY:                           'Utilities',
+  RENT_AND_UTILITIES_WATER:                                 'Utilities',
+  RENT_AND_UTILITIES_INTERNET_AND_CABLE:                    'Internet',
+  RENT_AND_UTILITIES_TELEPHONE:                             'Internet',
+  RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT:           'Utilities',
+  RENT_AND_UTILITIES_OTHER_UTILITIES:                       'Utilities',
+  ENTERTAINMENT_TV_AND_MOVIES:                              'Streaming',
+  ENTERTAINMENT_MUSIC_AND_AUDIO:                            'Music',
+  ENTERTAINMENT_VIDEO_GAMES:                                'Games',
+  ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS:'Movies',
+  ENTERTAINMENT_OTHER_ENTERTAINMENT:                        'Movies',
+  GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES:             'Clothing',
+  GENERAL_MERCHANDISE_ELECTRONICS:                          'Electronics',
+  GENERAL_MERCHANDISE_GROCERIES:                            'Groceries',
+  GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS:            'Books',
+  GENERAL_MERCHANDISE_ONLINE_MARKETPLACES:                  'Miscellaneous',
+  GENERAL_MERCHANDISE_DISCOUNT_STORES:                      'Miscellaneous',
+  GENERAL_MERCHANDISE_DEPARTMENT_STORES:                    'Clothing',
+  GENERAL_MERCHANDISE_HOME_AND_GARDEN:                      'Household',
+  GENERAL_MERCHANDISE_PET_SUPPLIES:                         'Miscellaneous',
+  GENERAL_MERCHANDISE_SPORTING_GOODS:                       'Gym',
+  GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE:            'Miscellaneous',
+  MEDICAL_PHARMACIES_AND_SUPPLEMENTS:                       'Pharmacy',
+  MEDICAL_DENTIST:                                          'Dental',
+  MEDICAL_DOCTOR:                                           'Doctor',
+  MEDICAL_GYMS_AND_FITNESS_CENTERS:                         'Gym',
+  MEDICAL_HOSPITALS:                                        'Doctor',
+  MEDICAL_VETERINARY_SERVICES:                              'Miscellaneous',
+  MEDICAL_OTHER_MEDICAL:                                    'Doctor',
+  PERSONAL_CARE_HAIR_AND_BEAUTY:                            'Personal Care',
+  PERSONAL_CARE_OTHER_PERSONAL_CARE:                        'Personal Care',
+  INCOME_WAGES:                                             'Salary',
+  INCOME_OTHER_INCOME:                                      'Freelance',
+  INCOME_DIVIDENDS:                                         'Investment Income',
+  INCOME_INTEREST_EARNED:                                   'Investment Income',
+  INCOME_RETIREMENT_PENSION:                                'Salary',
+  TRANSFER_IN_SAVINGS:                                      'Transfer Received',
+  TRANSFER_IN_ACCOUNT_TRANSFER:                             'Transfer Received',
+  TRANSFER_OUT_SAVINGS:                                     'Savings Transfer',
+  TRANSFER_OUT_ACCOUNT_TRANSFER:                            'Savings Transfer',
+  LOAN_PAYMENTS_CREDIT_CARD_PAYMENT:                        'Credit Card',
+  LOAN_PAYMENTS_MORTGAGE_PAYMENT:                           'Loan Payment',
+  LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT:                       'Loan Payment',
+  LOAN_PAYMENTS_CAR_PAYMENT:                                'Car Payment',
+  LOAN_PAYMENTS_OTHER_PAYMENT:                              'Loan Payment',
+  GENERAL_SERVICES_INSURANCE:                               'Insurance',
+  GENERAL_SERVICES_FINANCIAL_PLANNING_AND_FINANCIAL_ADVISORS:'Miscellaneous',
+  GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING:       'Miscellaneous',
+  GOVERNMENT_AND_NON_PROFIT_TAXES:                          'Miscellaneous',
 };
 
 // Plaid legacy category[1] (detailed) → our category name
@@ -97,6 +132,7 @@ export class ConnectionsService {
   constructor(
     private prisma: PrismaService,
     private plaid: PlaidService,
+    private aiCategorizer: AiCategorizerService,
   ) {}
 
   async createLinkToken(userId: string) {
@@ -141,6 +177,7 @@ export class ConnectionsService {
     }
 
     await this.syncConnectionTransactions(userId, connection.id, accessToken, 30);
+    await this.recategorizeTransactions(userId);
     return connection;
   }
 
@@ -152,6 +189,7 @@ export class ConnectionsService {
     for (const conn of connections) {
       await this.syncConnectionTransactions(userId, conn.id, conn.plaidAccessToken, 90);
     }
+    await this.recategorizeTransactions(userId);
     return { synced: connections.length };
   }
 
@@ -161,6 +199,55 @@ export class ConnectionsService {
       include: { _count: { select: { accounts: true } } },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async recategorizeTransactions(userId: string) {
+    const categories = await this.prisma.category.findMany();
+    const catMap = new Map(categories.map((c) => [c.name, c.id]));
+
+    const txns = await this.prisma.transaction.findMany({
+      where: { userId, categoryId: null },
+    });
+
+    let updated = 0;
+
+    // Pass 1: rule-based matching
+    const stillUncategorized: typeof txns = [];
+    for (const tx of txns) {
+      const plaidShape = { name: tx.description, merchant_name: tx.merchantName } as any;
+      const categoryId = this.autoCategory(plaidShape, catMap);
+      if (categoryId) {
+        await this.prisma.transaction.update({ where: { id: tx.id }, data: { categoryId } });
+        updated++;
+      } else {
+        stillUncategorized.push(tx);
+      }
+    }
+
+    // Pass 2: AI fallback for anything the rules couldn't match
+    if (stillUncategorized.length > 0) {
+      console.log(`[Categorizer] Rule-based matched ${updated}. Sending ${stillUncategorized.length} to Gemini AI...`);
+      const categoryNames = categories.map((c) => c.name);
+      const aiInput = stillUncategorized.map((tx) => ({
+        id: tx.id,
+        description: tx.description,
+        merchantName: tx.merchantName,
+        amount: tx.amount,
+      }));
+
+      const aiResults = await this.aiCategorizer.categorize(aiInput, categoryNames);
+      console.log(`[Categorizer] Gemini categorized ${aiResults.size} transactions.`);
+
+      for (const [txId, catName] of aiResults) {
+        const categoryId = catMap.get(catName);
+        if (categoryId) {
+          await this.prisma.transaction.update({ where: { id: txId }, data: { categoryId } });
+          updated++;
+        }
+      }
+    }
+
+    return { updated };
   }
 
   async deleteConnection(userId: string, connectionId: string) {
@@ -230,7 +317,7 @@ export class ConnectionsService {
   }
 
   private autoCategory(t: Transaction, catMap: Map<string, string>): string | null {
-    // 1. Plaid personal_finance_category.detailed (most accurate)
+    // 1. Plaid personal_finance_category.detailed (most accurate, requires include_personal_finance_category: true)
     const detailed = (t as any).personal_finance_category?.detailed as string | undefined;
     if (detailed && PLAID_DETAILED_MAP[detailed]) {
       return catMap.get(PLAID_DETAILED_MAP[detailed]) ?? null;
@@ -244,10 +331,11 @@ export class ConnectionsService {
       }
     }
 
-    // 3. Keyword match on description
+    // 3. Keyword match on description + merchant name
     const lower = t.name.toLowerCase();
+    const merchantLower = (t.merchant_name ?? '').toLowerCase();
     for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-      if (keywords.some((kw) => lower.includes(kw))) {
+      if (keywords.some((kw) => lower.includes(kw) || merchantLower.includes(kw))) {
         return catMap.get(catName) ?? null;
       }
     }

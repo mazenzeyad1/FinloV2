@@ -74,7 +74,7 @@ export class PlaidService {
         access_token: accessToken,
         start_date: startDate,
         end_date: endDate,
-        options: { count: 500, offset },
+        options: { count: 500, offset, include_personal_finance_category: true },
       });
       transactions = transactions.concat(response.data.transactions);
       const total = response.data.total_transactions;

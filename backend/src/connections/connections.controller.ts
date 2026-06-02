@@ -29,6 +29,12 @@ export class ConnectionsController {
     return this.service.syncTransactions(req.user.id);
   }
 
+  @Post('recategorize')
+  @ApiOperation({ summary: 'Apply auto-categorization to all uncategorized transactions' })
+  recategorizeTransactions(@Request() req: any) {
+    return this.service.recategorizeTransactions(req.user.id);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get all bank connections' })
   getConnections(@Request() req: any) {
