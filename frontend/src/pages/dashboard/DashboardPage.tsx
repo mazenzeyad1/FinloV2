@@ -79,7 +79,7 @@ export function DashboardPage() {
         <p className="text-[14px] text-text-2 mt-0.5">Hey, {user?.firstName} 👋</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
         {loadingAccounts || loadingMonth ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[96px]" />)
         ) : (
@@ -96,7 +96,7 @@ export function DashboardPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
         <ErrorBoundary>
           <div className="card p-5">
             <p className="text-[13px] font-semibold text-text-1 mb-4">Spending — last 7 days</p>

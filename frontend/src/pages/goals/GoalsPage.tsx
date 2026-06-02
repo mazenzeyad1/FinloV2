@@ -84,11 +84,11 @@ export function GoalsPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40" />)}
         </div>
       ) : goals?.length === 0 ? (
-        <div className="card p-10 text-center">
+        <div className="card p-6 text-center">
           <div className="flex items-center justify-center mb-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
               <FlagIcon className="w-6 h-6 text-primary" />
@@ -101,7 +101,7 @@ export function GoalsPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
           {goals?.map((goal: any) => {
             const pct = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0
             return (

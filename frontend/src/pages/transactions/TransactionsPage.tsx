@@ -113,7 +113,7 @@ export function TransactionsPage() {
 
       {/* Filter panel */}
       {showFilters && (
-        <div className="card p-4 grid grid-cols-3 gap-3">
+        <div className="card p-4 grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
           <div>
             <label className="text-[11px] text-text-3 font-medium mb-1 block">From date</label>
             <input type="date" className="input text-[12px]" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1) }} />
@@ -150,7 +150,7 @@ export function TransactionsPage() {
 
       {/* Summary bar */}
       {data && (
-        <div className="card p-4 flex gap-6">
+        <div className="card p-4 flex flex-wrap gap-4">
           <div>
             <span className="text-[11px] text-text-3 block">Income</span>
             <span className="text-[16px] font-semibold text-success">{CAD.format(income)}</span>
@@ -177,7 +177,7 @@ export function TransactionsPage() {
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
           </div>
         ) : data?.data?.length === 0 ? (
-          <div className="p-10 text-center text-[13px] text-text-3">No transactions found</div>
+          <div className="p-6 text-center text-[13px] text-text-3">No transactions found</div>
         ) : (
           <div>
             {Object.entries(groups).map(([date, txns]) => (

@@ -61,9 +61,9 @@ export function AccountsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-[22px] font-semibold text-text-1">Accounts</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => syncBalances.mutate()}
             disabled={syncBalances.isPending}
@@ -78,12 +78,12 @@ export function AccountsPage() {
 
       {/* Net worth summary */}
       {accounts && accounts.length > 0 && (
-        <div className="card p-5 flex items-center justify-between">
+        <div className="card p-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-medium text-text-3 uppercase tracking-wider mb-0.5">Total balance</p>
             <p className="text-[28px] font-bold text-text-1 leading-none">{CAD.format(netWorth)}</p>
           </div>
-          <div className="flex gap-5">
+          <div className="flex flex-wrap gap-4">
             {Object.entries(
               accounts.reduce((acc: Record<string, number>, a: any) => {
                 const key = a.type === 'depository' ? 'Cash' : a.type === 'credit' ? 'Credit' : null
@@ -107,7 +107,7 @@ export function AccountsPage() {
           {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-40" />)}
         </div>
       ) : !connections || connections.length === 0 ? (
-        <div className="card p-10 text-center">
+        <div className="card p-6 text-center">
           <div className="flex items-center justify-center mb-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
               <BuildingLibraryIcon className="w-6 h-6 text-primary" />
@@ -189,7 +189,7 @@ export function AccountsPage() {
 
               {/* Inactive warning */}
               {isInactive && (
-                <div className="flex items-center justify-between bg-danger/5 border border-danger/15 rounded-lg px-3 py-2.5 mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-danger/5 border border-danger/15 rounded-lg px-3 py-2.5 mb-4">
                   <div className="flex items-center gap-2">
                     <ExclamationTriangleIcon className="w-4 h-4 text-danger flex-shrink-0" />
                     <p className="text-[12px] text-danger">This connection needs to be re-authenticated.</p>
