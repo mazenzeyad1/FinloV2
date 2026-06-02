@@ -1,8 +1,6 @@
-# Finlo V2
+# Finlo
 
-A personal finance management web app that connects to your bank accounts via Plaid to track spending, budgets, goals, and transfers.
-
----
+A personal finance app that connects to your bank accounts via Plaid, automatically categorizes transactions using AI, and helps you track budgets and savings goals.
 
 ## Tech Stack
 
@@ -10,20 +8,19 @@ A personal finance management web app that connects to your bank accounts via Pl
 |---|---|
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS |
 | Backend | NestJS, TypeScript |
-| Database | PostgreSQL via Prisma ORM |
+| Database | PostgreSQL (Neon) via Prisma ORM |
 | Auth | JWT (access + refresh tokens), Passport.js |
 | Banking | Plaid API |
-| Payments | Stripe |
+| AI Categorization | Groq API (Llama 3.1 — free tier) |
 | Email | Nodemailer (Brevo SMTP) |
+| Payments | Stripe |
 | State | Zustand + TanStack Query |
 | Charts | Recharts |
 | Forms | React Hook Form + Zod |
 | Icons | Heroicons |
-| Validation | class-validator + class-transformer |
-| Security | Helmet (HTTP headers), NestJS Throttler (rate limiting) |
+| Security | Helmet, NestJS Throttler |
 | Logging | Winston |
-
----
+| Hosting | Vercel (frontend) + Render (backend) |
 
 ## Project Structure
 
@@ -31,85 +28,82 @@ A personal finance management web app that connects to your bank accounts via Pl
 FinloV2/
 ├── backend/          # NestJS API (port 3000)
 │   ├── src/
-│   │   ├── app/          # Root module (AppModule)
-│   │   ├── auth/         # Login, register, JWT, email verification, password reset
-│   │   ├── users/        # User profile management
-│   │   ├── connections/  # Plaid bank connections (link token, exchange, sync)
-│   │   ├── accounts/     # Bank accounts synced from Plaid
-│   │   ├── transactions/ # Transaction history & categorization
-│   │   ├── budgets/      # Monthly budgets per category
-│   │   ├── goals/        # Savings goals & contributions
-│   │   ├── transfers/    # Peer-to-peer transfers between users
-│   │   ├── investments/  # Investment tracking
-│   │   ├── notifications/# In-app notifications
-│   │   ├── health/       # Health check endpoint (GET /health)
-│   │   ├── providers/    # Plaid & Stripe service providers
-│   │   └── common/       # Shared utilities
-│   │       ├── errors/       # Global exception filters
-│   │       ├── logger/       # Winston logger service
-│   │       ├── mailer/       # Nodemailer email service
-│   │       ├── pagination/   # Cursor/offset pagination helpers
-│   │       ├── prisma/       # Prisma client provider
-│   │       └── throttle/     # Rate-limit decorators
+│   │   ├── app/              # Root module
+│   │   ├── auth/             # Login, register, JWT, email verification, password reset
+│   │   ├── users/            # User profile management
+│   │   ├── connections/      # Plaid bank connections + transaction sync + AI categorization
+│   │   ├── accounts/         # Bank accounts synced from Plaid
+│   │   ├── transactions/     # Transaction history & manual category edits
+│   │   ├── budgets/          # Monthly budgets per category
+│   │   ├── goals/            # Savings goals & contributions
+│   │   ├── transfers/        # Peer-to-peer transfers between users
+│   │   ├── investments/      # Investment tracking
+│   │   ├── notifications/    # In-app notifications
+│   │   ├── health/           # GET /health
+│   │   ├── providers/plaid/  # Plaid SDK service
+│   │   └── common/
+│   │       ├── ai/           # Groq AI categorizer service
+│   │       ├── mailer/       # Brevo SMTP email service
+│   │       ├── prisma/       # Prisma client
+│   │       └── logger/       # Winston logger
 │   └── prisma/
-│       └── schema.prisma # Database schema
-└── frontend/         # React app (port 5173)
+│       ├── schema.prisma     # Database schema
+│       └── seed.ts           # Default categories seed
+└── frontend/         # React app (port 5174)
     └── src/
-        ├── pages/        # auth, dashboard, accounts, transactions, budgets, goals, investments, transfer
-        ├── components/   # Shared UI components (charts, layout, plaid, ui)
-        ├── hooks/        # Custom React hooks (per feature)
-        ├── store/        # Zustand global state (auth)
+        ├── pages/        # auth, dashboard, accounts, transactions, budgets, goals
+        ├── components/   # Layout, charts, Plaid Link, shared UI
+        ├── hooks/        # TanStack Query hooks per feature
+        ├── store/        # Zustand auth store
         └── lib/          # Axios API client
 ```
 
----
-
 ## Prerequisites
 
-- Node.js 18+
-- PostgreSQL running locally
-- Plaid account (sandbox credentials)
-- (Optional) Brevo account for email, Stripe account for payments
+- Node.js 20+
+- A PostgreSQL database (local or [Neon](https://neon.tech) free tier)
+- [Plaid](https://plaid.com) developer account (sandbox is free)
+- [Groq](https://console.groq.com) API key (free)
+- [Brevo](https://brevo.com) account for email (free tier)
 
----
-
-## Setup
+## Local Setup
 
 ### 1. Install dependencies
 
 ```bash
-# Backend
-cd backend && npm install
-
-# Frontend
-cd frontend && npm install
+npm install
 ```
 
-### 2. Configure environment variables
+### 2. Configure backend environment
 
-**`backend/.env`**
+```bash
+cp backend/.env.example backend/.env
+```
+
+Fill in `backend/.env`:
+
 ```env
-DATABASE_URL="postgresql://postgres:yourpassword@localhost:5432/FinloV2?schema=public"
-JWT_SECRET="your-jwt-secret"
+DATABASE_URL="postgresql://..."
+JWT_SECRET="your-secret"
 JWT_ACCESS_TTL="15m"
 JWT_REFRESH_TTL_MS="2592000000"
-APP_URL="http://localhost:5173"
+APP_URL="http://localhost:5174"
+FRONTEND_URL="http://localhost:5174"
 PORT=3000
 
-# Email (Brevo)
 SMTP_HOST="smtp-relay.brevo.com"
 SMTP_PORT=587
-SMTP_USER="your-brevo-email@example.com"
-SMTP_PASS="your-brevo-smtp-key"
+SMTP_USER="..."
+SMTP_PASS="..."
 MAIL_FROM="no-reply@finlo.ca"
 MAIL_FROM_NAME="Finlo"
 
-# Plaid
-PLAID_CLIENT_ID="your-client-id"
-PLAID_SECRET="your-sandbox-secret"
+PLAID_CLIENT_ID="..."
+PLAID_SECRET="..."
 PLAID_ENV="sandbox"
 
-# Stripe
+GROQ_API_KEY="gsk_..."   # free at console.groq.com
+
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 ```
@@ -117,78 +111,93 @@ STRIPE_WEBHOOK_SECRET="whsec_..."
 ### 3. Set up the database
 
 ```bash
-cd backend
-
-# Run migrations
-npm run prisma:migrate
-
-# Generate Prisma client
-npm run prisma:generate
+npm --workspace backend run prisma:migrate
+npm --workspace backend run prisma:generate
+npm --workspace backend run prisma:seed
 ```
 
 ### 4. Start the app
 
-Open two terminals:
-
 ```bash
-# Terminal 1 — Backend (http://localhost:3000)
-cd backend && npm run start:dev
-
-# Terminal 2 — Frontend (http://localhost:5173)
-cd frontend && npm run dev
+npm run dev
 ```
 
----
+Frontend: `http://localhost:5174` — Backend: `http://localhost:3000`
 
-## Available Scripts
+## Scripts
+
+### Root (runs both)
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start backend + frontend together |
 
 ### Backend
 
 | Command | Description |
 |---|---|
-| `npm run start:dev` | Start with hot reload (development) |
-| `npm run build` | Compile TypeScript to `dist/` |
-| `npm run start` | Run compiled production build |
-| `npm run prisma:migrate` | Apply database migrations |
-| `npm run prisma:generate` | Regenerate Prisma client after schema changes |
-| `npm run prisma:studio` | Open Prisma Studio (visual DB browser) |
+| `npm run start:dev` | Hot-reload dev server |
+| `npm run build` | Compile to `dist/` |
+| `npm run start` | Run production build |
+| `npm run prisma:migrate` | Apply migrations |
+| `npm run prisma:generate` | Regenerate Prisma client |
+| `npm run prisma:seed` | Seed default categories |
+| `npm run prisma:studio` | Open Prisma Studio |
 
 ### Frontend
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Start Vite dev server |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build locally |
+| `npm run dev` | Vite dev server |
+| `npm run build` | Production build |
+| `npm run preview` | Preview production build |
 
----
+## Transaction Categorization
+
+Transactions are categorized automatically on every sync using a 4-pass pipeline:
+
+1. **Plaid detailed category** — `personal_finance_category.detailed` field (most accurate)
+2. **Plaid legacy category** — `category[]` array fallback
+3. **Keyword matching** — description + merchant name against a keyword map
+4. **AI fallback** — Groq (Llama 3.1) classifies anything still uncategorized
+
+Users can also manually override any category from the transaction detail drawer.
+
+## Plaid Sandbox Testing
+
+1. Go to **Accounts** → **Connect Bank**
+2. In Plaid Link, use credentials: `user_good` / `pass_good`
+3. Accounts and 90 days of transactions sync automatically
+
+To switch to production: set `PLAID_ENV=production` and update `PLAID_SECRET` in your env.
+
+## Deployment
+
+### Backend (Render)
+
+- Connect the repo to Render, set root directory to `backend/`
+- Build command: `npm install && npm run build`
+- Start command: `npm run start`
+- Add all `backend/.env` variables in the Render dashboard
+
+### Frontend (Vercel)
+
+- Connect the repo to Vercel, set root directory to `frontend/`
+- `vercel.json` rewrites `/api/*` → Render backend URL to avoid CORS
 
 ## Database Models
 
 | Model | Description |
 |---|---|
-| `User` | App users with email/password auth |
-| `RefreshToken` | Stored hashed refresh tokens |
-| `EmailToken` | Tokens for email verification & password reset |
-| `Connection` | Plaid bank connections per user |
-| `Account` | Bank accounts pulled from Plaid |
-| `Transaction` | Transactions synced from Plaid |
-| `Category` | Transaction categories (default set seeded) |
-| `Budget` | Monthly spending budgets per category |
-| `Goal` | Savings goals with contribution history |
-| `GoalContribution` | Individual contributions toward a goal |
-| `Transfer` | Peer-to-peer transfers between Finlo users |
+| `User` | App users |
+| `RefreshToken` | Hashed refresh tokens |
+| `EmailToken` | Email verification & password reset tokens |
+| `Connection` | Plaid bank connections |
+| `Account` | Bank accounts from Plaid |
+| `Transaction` | Synced transactions with category assignments |
+| `Category` | Transaction categories (seeded defaults) |
+| `Budget` | Monthly spending limits per category |
+| `Goal` | Savings goals |
+| `GoalContribution` | Individual goal contributions |
+| `Transfer` | Peer-to-peer transfers |
 | `Notification` | In-app notifications |
-
----
-
-## Plaid Integration
-
-This project uses Plaid in **sandbox** mode by default. To test bank linking:
-
-1. Log in and navigate to Connections
-2. Click "Link Account" — Plaid Link will open
-3. Use sandbox credentials: `user_good` / `pass_good`
-4. Accounts and transactions will sync automatically
-
-To switch to production, update `PLAID_ENV=production` and `PLAID_SECRET` to your production secret in `backend/.env`.
