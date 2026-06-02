@@ -1,8 +1,8 @@
-import { format, subDays, startOfMonth } from 'date-fns'
+import { format, subDays } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/auth.store'
 import { useAccounts } from '../../hooks/useAccounts'
-import { useTransactions, useTransactionSummary } from '../../hooks/useTransactions'
+import { useTransactions } from '../../hooks/useTransactions'
 import { MetricCard } from '../../components/ui/MetricCard'
 import { SpendingChart } from '../../components/charts/SpendingChart'
 import { DonutChart } from '../../components/charts/DonutChart'
@@ -19,23 +19,28 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`bg-surface-3 animate-pulse rounded-lg ${className}`} />
 }
 
+function localDate(dateStr: string) {
+  return new Date(dateStr.substring(0, 10) + 'T12:00:00')
+}
+
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user)
   const now = new Date()
-  const month = now.getMonth() + 1
-  const year = now.getFullYear()
   const sevenDaysAgo = format(subDays(now, 6), 'yyyy-MM-dd')
+  const thirtyDaysAgo = format(subDays(now, 29), 'yyyy-MM-dd')
   const today = format(now, 'yyyy-MM-dd')
-  const monthStart = format(startOfMonth(now), 'yyyy-MM-dd')
 
   const { data: accounts, isLoading: loadingAccounts } = useAccounts()
-  const { data: summary, isLoading: loadingSummary } = useTransactionSummary(month, year)
   const { data: recentData, isLoading: loadingRecent } = useTransactions({ pageSize: 5, sortBy: 'date', sortDir: 'desc' })
   const { data: weekData } = useTransactions({ from: sevenDaysAgo, to: today, pageSize: 200 })
-  const { data: monthData } = useTransactions({ from: monthStart, to: today, pageSize: 500 })
+  const { data: monthData, isLoading: loadingMonth } = useTransactions({ from: thirtyDaysAgo, to: today, pageSize: 500 })
 
   const netWorth = accounts?.reduce((sum: number, a: any) => sum + a.balance, 0) ?? 0
-  const savingsRate = summary?.income > 0 ? ((summary.income - summary.expenses) / summary.income) * 100 : 0
+
+  // Compute income/expenses from last 30 days of transactions
+  const income = monthData?.data?.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0) ?? 0
+  const expenses = monthData?.data?.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0) ?? 0
+  const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0
 
   const spendByDay: Record<string, number> = {}
   for (let i = 6; i >= 0; i--) {
@@ -45,7 +50,7 @@ export function DashboardPage() {
   if (weekData?.data) {
     for (const t of weekData.data) {
       if (t.amount > 0) {
-        const d = format(new Date(t.date), 'EEE')
+        const d = format(localDate(t.date), 'EEE')
         spendByDay[d] = (spendByDay[d] ?? 0) + t.amount
       }
     }
@@ -75,13 +80,13 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        {loadingAccounts || loadingSummary ? (
+        {loadingAccounts || loadingMonth ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[96px]" />)
         ) : (
           <>
             <MetricCard label="Net worth" value={CAD.format(netWorth)} accent />
-            <MetricCard label="Monthly income" value={CAD.format(summary?.income ?? 0)} changeType="up" />
-            <MetricCard label="Monthly spend" value={CAD.format(summary?.expenses ?? 0)} changeType="down" />
+            <MetricCard label="Income (30d)" value={CAD.format(income)} changeType="up" />
+            <MetricCard label="Spend (30d)" value={CAD.format(expenses)} changeType="down" />
             <MetricCard
               label="Savings rate"
               value={`${savingsRate.toFixed(1)}%`}
@@ -100,7 +105,7 @@ export function DashboardPage() {
         </ErrorBoundary>
         <ErrorBoundary>
           <div className="card p-5">
-            <p className="text-[13px] font-semibold text-text-1 mb-4">Spend by category — this month</p>
+            <p className="text-[13px] font-semibold text-text-1 mb-4">Spend by category — last 30 days</p>
             {donutData.length > 0 ? (
             <>
               <DonutChart data={donutData} />
@@ -118,7 +123,7 @@ export function DashboardPage() {
             </>
           ) : (
             <div className="h-[160px] flex items-center justify-center text-[13px] text-text-3">
-              No transactions this week
+              No spending in the last 30 days
             </div>
           )}
           </div>
@@ -156,7 +161,7 @@ export function DashboardPage() {
                   <p className={`text-[13px] font-semibold ${t.amount < 0 ? 'text-success' : 'text-text-1'}`}>
                     {t.amount < 0 ? '+' : ''}{CAD.format(Math.abs(t.amount))}
                   </p>
-                  <p className="text-[11px] text-text-3">{format(new Date(t.date), 'MMM d')}</p>
+                  <p className="text-[11px] text-text-3">{format(localDate(t.date), 'MMM d')}</p>
                 </div>
               </div>
             ))}

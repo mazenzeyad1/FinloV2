@@ -189,11 +189,21 @@ export class ConnectionsService {
     const categories = await this.prisma.category.findMany();
     const catMap = new Map(categories.map((c) => [c.name, c.id]));
 
+    const externalIds = plaidTxns.map((t) => t.transaction_id);
+    const existingTxns = await this.prisma.transaction.findMany({
+      where: { externalId: { in: externalIds } },
+      select: { externalId: true, categoryId: true },
+    });
+    const existingCatMap = new Map(existingTxns.map((t) => [t.externalId, t.categoryId]));
+
     for (const t of plaidTxns) {
       const accountId = accountMap.get(t.account_id);
       if (!accountId) continue;
 
       const categoryId = this.autoCategory(t, catMap);
+      const existingCategoryId = existingCatMap.get(t.transaction_id);
+      // Only set category on update if transaction has no category yet (preserves manual assignments)
+      const categoryUpdate = existingCategoryId == null ? { categoryId } : {};
 
       await this.prisma.transaction.upsert({
         where: { externalId: t.transaction_id },
@@ -213,7 +223,7 @@ export class ConnectionsService {
           amount: t.amount,
           pending: t.pending,
           merchantName: t.merchant_name ?? null,
-          categoryId,
+          ...categoryUpdate,
         },
       });
     }

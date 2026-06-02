@@ -26,6 +26,12 @@ export class TransactionsController {
     return this.service.getSummary(req.user.id, query.month, query.year);
   }
 
+  @Get('categories')
+  @ApiOperation({ summary: 'Get all transaction categories' })
+  getCategories() {
+    return this.service.getCategories();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single transaction' })
   getTransaction(@Request() req: any, @Param('id') id: string) {

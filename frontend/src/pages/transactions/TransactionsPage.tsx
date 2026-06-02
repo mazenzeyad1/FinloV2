@@ -1,14 +1,19 @@
 import { useState, useMemo } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
-import { useTransactions, useTransactionSummary, useUpdateTransaction } from '../../hooks/useTransactions'
+import { useTransactions, useUpdateTransaction, useCategories } from '../../hooks/useTransactions'
 import { useAccounts } from '../../hooks/useAccounts'
 import { Drawer } from '../../components/ui/Drawer'
 
 const CAD = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' })
 
+// Parse transaction dates at local noon to avoid UTC-midnight timezone shifts
+function localDate(dateStr: string) {
+  return new Date(dateStr.substring(0, 10) + 'T12:00:00')
+}
+
 function dateHeader(date: string) {
-  const d = new Date(date)
+  const d = localDate(date)
   if (isToday(d)) return `Today · ${format(d, 'MMM d')}`
   if (isYesterday(d)) return `Yesterday · ${format(d, 'MMM d')}`
   return format(d, 'EEEE · MMM d')
@@ -17,7 +22,7 @@ function dateHeader(date: string) {
 function groupByDate(txns: any[]) {
   const groups: Record<string, any[]> = {}
   for (const t of txns) {
-    const key = format(new Date(t.date), 'yyyy-MM-dd')
+    const key = t.date.substring(0, 10)
     if (!groups[key]) groups[key] = []
     groups[key].push(t)
   }
@@ -29,10 +34,6 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 export function TransactionsPage() {
-  const now = new Date()
-  const month = now.getMonth() + 1
-  const year = now.getFullYear()
-
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<'all' | 'income' | 'expense'>('all')
   const [showFilters, setShowFilters] = useState(false)
@@ -55,11 +56,16 @@ export function TransactionsPage() {
   }), [page, search, tab, from, to, accountId])
 
   const { data, isLoading } = useTransactions(filters)
-  const { data: summary } = useTransactionSummary(month, year)
   const { data: accounts } = useAccounts()
+  const { data: categories } = useCategories()
   const updateTx = useUpdateTransaction()
 
   const groups = useMemo(() => groupByDate(data?.data ?? []), [data])
+
+  // Derive summary from currently loaded transactions so it matches the active filter
+  const income = useMemo(() => data?.data?.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0) ?? 0, [data])
+  const expenses = useMemo(() => data?.data?.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0) ?? 0, [data])
+  const net = income - expenses
 
   const openDrawer = (tx: any) => {
     setSelectedTx(tx)
@@ -143,22 +149,22 @@ export function TransactionsPage() {
       </div>
 
       {/* Summary bar */}
-      {summary && (
+      {data && (
         <div className="card p-4 flex gap-6">
           <div>
             <span className="text-[11px] text-text-3 block">Income</span>
-            <span className="text-[16px] font-semibold text-success">{CAD.format(summary.income)}</span>
+            <span className="text-[16px] font-semibold text-success">{CAD.format(income)}</span>
           </div>
           <div className="w-px bg-surface-3" />
           <div>
             <span className="text-[11px] text-text-3 block">Expenses</span>
-            <span className="text-[16px] font-semibold text-danger">{CAD.format(summary.expenses)}</span>
+            <span className="text-[16px] font-semibold text-danger">{CAD.format(expenses)}</span>
           </div>
           <div className="w-px bg-surface-3" />
           <div>
             <span className="text-[11px] text-text-3 block">Net</span>
-            <span className={`text-[16px] font-semibold ${summary.net >= 0 ? 'text-primary' : 'text-danger'}`}>
-              {CAD.format(summary.net)}
+            <span className={`text-[16px] font-semibold ${net >= 0 ? 'text-primary' : 'text-danger'}`}>
+              {CAD.format(net)}
             </span>
           </div>
         </div>
@@ -201,7 +207,7 @@ export function TransactionsPage() {
                       <p className={`text-[13px] font-semibold ${t.amount < 0 ? 'text-success' : 'text-text-1'}`}>
                         {t.amount < 0 ? '+' : ''}{CAD.format(Math.abs(t.amount))}
                       </p>
-                      <p className="text-[11px] text-text-3">{format(new Date(t.date), 'MMM d, yyyy')}</p>
+                      <p className="text-[11px] text-text-3">{format(localDate(t.date), 'MMM d, yyyy')}</p>
                     </div>
                   </div>
                 ))}
@@ -235,12 +241,16 @@ export function TransactionsPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-[11px] text-text-3 font-medium mb-1.5 block">Category</label>
-                <input
+                <select
                   className="input"
-                  placeholder="Category ID"
                   value={editCategoryId}
                   onChange={(e) => setEditCategoryId(e.target.value)}
-                />
+                >
+                  <option value="">Uncategorized</option>
+                  {categories?.map((c) => (
+                    <option key={c.id} value={c.id}>{c.groupName} — {c.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-[11px] text-text-3 font-medium mb-1.5 block">Notes</label>

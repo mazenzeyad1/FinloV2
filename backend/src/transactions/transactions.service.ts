@@ -85,12 +85,18 @@ export class TransactionsService {
     return { updated: result.count };
   }
 
+  async getCategories() {
+    return this.prisma.category.findMany({
+      orderBy: [{ groupName: 'asc' }, { name: 'asc' }],
+    });
+  }
+
   async getSummary(userId: string, month: number, year: number) {
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 1);
 
     const txns = await this.prisma.transaction.findMany({
-      where: { userId, date: { gte: start, lt: end } },
+      where: { userId, date: { gte: start, lt: end }, pending: false },
       select: { amount: true },
     });
 

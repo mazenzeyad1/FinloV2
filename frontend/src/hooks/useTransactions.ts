@@ -36,6 +36,13 @@ export function useTransactionSummary(month: number, year: number) {
   })
 }
 
+export function useCategories() {
+  return useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.get('/transactions/categories').then((r) => r.data as { id: string; name: string; groupName: string }[]),
+  })
+}
+
 export function useUpdateTransaction() {
   const qc = useQueryClient()
   return useMutation({
