@@ -3,15 +3,24 @@ import { Layout } from './components/layout/Layout'
 import { ProtectedRoute } from './ProtectedRoute'
 import { LoginPage }        from './pages/auth/LoginPage'
 import { RegisterPage }     from './pages/auth/RegisterPage'
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
+import { ResetPasswordPage }  from './pages/auth/ResetPasswordPage'
+import { VerifyEmailPage }    from './pages/auth/VerifyEmailPage'
 import { DashboardPage }    from './pages/dashboard/DashboardPage'
 import { TransactionsPage } from './pages/transactions/TransactionsPage'
 import { BudgetsPage }      from './pages/budgets/BudgetsPage'
 import { GoalsPage }        from './pages/goals/GoalsPage'
 import { AccountsPage }     from './pages/accounts/AccountsPage'
+import { SettingsPage }     from './pages/settings/SettingsPage'
+import { VerifyEmailChangePage } from './pages/auth/VerifyEmailChangePage'
 
 export const router = createBrowserRouter([
-  { path: '/login',    element: <LoginPage /> },
-  { path: '/register', element: <RegisterPage /> },
+  { path: '/login',           element: <LoginPage /> },
+  { path: '/register',        element: <RegisterPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password',  element: <ResetPasswordPage /> },
+  { path: '/verify-email',    element: <VerifyEmailPage /> },
+  { path: '/verify-email-change', element: <VerifyEmailChangePage /> },
   {
     path: '/check-email',
     element: (
@@ -42,6 +51,7 @@ export const router = createBrowserRouter([
       { path: '/budgets',      element: <BudgetsPage /> },
       { path: '/goals',        element: <GoalsPage /> },
       { path: '/accounts',     element: <AccountsPage /> },
+      { path: '/settings',     element: <SettingsPage /> },
     ],
   },
 ])

@@ -1,7 +1,15 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, Request, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { IsEmail, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { TransfersService } from './transfers.service';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
+
+class SendMoneyDto {
+  @IsEmail() recipientEmail: string;
+  @Type(() => Number) @IsNumber() @Min(0.01) amount: number;
+  @IsOptional() @IsString() memo?: string;
+}
 
 @ApiTags('transfers')
 @ApiBearerAuth()
@@ -17,8 +25,9 @@ export class TransfersController {
   }
 
   @Post('send')
+  @HttpCode(201)
   @ApiOperation({ summary: 'Send money to another Finlo user' })
-  sendMoney(@Request() req: any, @Body() dto: any) {
+  sendMoney(@Request() req: any, @Body() dto: SendMoneyDto) {
     return this.service.sendMoney(req.user.id, dto);
   }
 

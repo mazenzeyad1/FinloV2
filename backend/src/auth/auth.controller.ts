@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, UseGuards, Request, Res, Req, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, UseGuards, Request, Res, Req, UnauthorizedException, HttpCode } from '@nestjs/common';
 import { Response, Request as ExpressRequest } from 'express';
 import {
   ApiTags, ApiOperation, ApiBearerAuth,
@@ -7,16 +7,7 @@ import {
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt.guard';
 import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
-
-const COOKIE_NAME = 'finlo_refresh';
-const isProd = process.env.NODE_ENV === 'production';
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: isProd,
-  sameSite: isProd ? 'none' as const : 'lax' as const,
-  maxAge: 30 * 24 * 60 * 60 * 1000,
-  path: '/api/auth/refresh',
-};
+import { COOKIE_NAME, COOKIE_OPTIONS } from './cookie.constants';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -24,6 +15,7 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
+  @HttpCode(201)
   @ApiOperation({ summary: 'Register a new user' })
   @ApiCreatedResponse({ description: 'Account created' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
@@ -63,6 +55,10 @@ export class AuthController {
   @Get('verify-email')
   @ApiOperation({ summary: 'Verify email address' })
   verifyEmail(@Query('token') token: string) { return this.authService.verifyEmail(token); }
+
+  @Get('verify-email-change')
+  @ApiOperation({ summary: 'Confirm a pending email-address change' })
+  verifyEmailChange(@Query('token') token: string) { return this.authService.verifyEmailChange(token); }
 
   @Post('forgot-password')
   @ApiOperation({ summary: 'Request password reset email' })

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { AppExceptions, ERROR_CODES } from '../common/errors/app-exception';
 
 @Injectable()
 export class BudgetsService {
@@ -67,6 +68,7 @@ export class BudgetsService {
   }
 
   async copyFromPreviousMonth(userId: string, year: number, month: number) {
+    if (month < 1 || month > 12) throw AppExceptions.badRequest(ERROR_CODES.INVALID_INPUT);
     let prevYear = year;
     let prevMonth = month - 1;
     if (prevMonth === 0) { prevMonth = 12; prevYear -= 1; }

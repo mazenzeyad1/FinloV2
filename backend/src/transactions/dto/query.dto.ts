@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, IsNumber, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsNumber, IsBoolean, IsArray, ArrayMinSize, IsNotEmpty } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/pagination/pagination.dto';
@@ -44,8 +44,8 @@ export class UpdateTransactionDto {
 }
 
 export class BulkUpdateCategoryDto {
-  ids: string[];
-  categoryId: string;
+  @IsArray() @ArrayMinSize(1) @IsString({ each: true }) ids: string[];
+  @IsString() @IsNotEmpty() categoryId: string;
 }
 
 export class SummaryQueryDto {

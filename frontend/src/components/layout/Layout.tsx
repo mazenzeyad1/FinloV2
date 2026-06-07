@@ -5,6 +5,7 @@ import {
   ChartBarIcon,
   TrophyIcon,
   BanknotesIcon,
+  Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '../../store/auth.store'
@@ -16,6 +17,7 @@ const navItems = [
   { to: '/budgets',      label: 'Budgets',      Icon: ChartBarIcon },
   { to: '/goals',        label: 'Goals',        Icon: TrophyIcon },
   { to: '/accounts',     label: 'Accounts',     Icon: BanknotesIcon },
+  { to: '/settings',     label: 'Settings',     Icon: Cog6ToothIcon },
 ]
 
 export function Layout() {

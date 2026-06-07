@@ -62,6 +62,26 @@ export class AuthService {
     return { message: 'Email verified successfully' };
   }
 
+  async verifyEmailChange(token: string) {
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    const record = await this.prisma.emailToken.findUnique({ where: { tokenHash: hash } });
+    if (!record || record.usedAt || record.expiresAt < new Date() || record.type !== 'CHANGE_EMAIL' || !record.newEmail)
+      throw AppExceptions.badRequest(ERROR_CODES.INVALID_OR_EXPIRED_TOKEN);
+
+    // Re-check availability in case someone claimed the address since the request
+    const taken = await this.prisma.user.findUnique({ where: { email: record.newEmail } });
+    if (taken && taken.id !== record.userId) throw AppExceptions.conflict(ERROR_CODES.EMAIL_ALREADY_IN_USE);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { email: record.newEmail, isVerified: true },
+      }),
+      this.prisma.emailToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+    ]);
+    return { message: 'Email updated successfully' };
+  }
+
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) return { message: 'If that email exists, a reset link was sent' };

@@ -79,8 +79,8 @@ Every transaction must have an entry. Category must exactly match one from the l
           result.set(tx.id, a.category);
         }
       }
-    } catch {
-      // API or parsing failed — rule-based already did its best
+    } catch (err) {
+      console.error('[AiCategorizer] Groq categorization failed:', err instanceof Error ? err.message : err);
     }
 
     return result;

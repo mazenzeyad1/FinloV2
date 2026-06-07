@@ -43,6 +43,7 @@ model EmailToken {
   userId    String
   tokenHash String         @unique
   type      EmailTokenType
+  newEmail  String?
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime       @default(now())
@@ -52,6 +53,7 @@ model EmailToken {
 enum EmailTokenType {
   VERIFY_EMAIL
   RESET_PASSWORD
+  CHANGE_EMAIL
 }
 
 model Connection {
@@ -123,6 +125,9 @@ model Transaction {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   account      Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   category     Category? @relation(fields: [categoryId], references: [id])
+  @@index([userId])
+  @@index([accountId])
+  @@index([categoryId])
 }
 
 model Budget {
@@ -137,6 +142,7 @@ model Budget {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category      Category @relation(fields: [categoryId], references: [id])
   @@unique([userId, categoryId, year, month])
+  @@index([userId])
 }
 
 model Goal {
@@ -174,6 +180,8 @@ model Transfer {
   updatedAt   DateTime       @updatedAt
   sender      User           @relation("SentTransfers", fields: [senderId], references: [id])
   recipient   User           @relation("ReceivedTransfers", fields: [recipientId], references: [id])
+  @@index([senderId])
+  @@index([recipientId])
 }
 
 enum TransferStatus {

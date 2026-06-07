@@ -78,6 +78,8 @@ export class TransactionsService {
   }
 
   async bulkUpdateCategory(userId: string, ids: string[], categoryId: string) {
+    const category = await this.prisma.category.findUnique({ where: { id: categoryId } });
+    if (!category) throw AppExceptions.notFound(ERROR_CODES.RESOURCE_NOT_FOUND);
     const result = await this.prisma.transaction.updateMany({
       where: { id: { in: ids }, userId },
       data: { categoryId },

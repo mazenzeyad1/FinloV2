@@ -1,10 +1,10 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/auth.store'
 
-const BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : '/api')
+export const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000/api' : '/api')
 
 export const api = axios.create({
-  baseURL: BASE,
+  baseURL: API_BASE,
   withCredentials: true,
 })
 
@@ -27,7 +27,7 @@ api.interceptors.response.use(
       try {
         if (!refreshing) {
           refreshing = axios
-            .post<{ accessToken: string }>(`${BASE}/auth/refresh`, {}, { withCredentials: true })
+            .post<{ accessToken: string }>(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
             .then(({ data }) => {
               useAuthStore.getState().setAccessToken(data.accessToken)
               return data.accessToken

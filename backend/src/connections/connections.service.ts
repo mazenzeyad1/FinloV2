@@ -226,7 +226,7 @@ export class ConnectionsService {
 
     // Pass 2: AI fallback for anything the rules couldn't match
     if (stillUncategorized.length > 0) {
-      console.log(`[Categorizer] Rule-based matched ${updated}. Sending ${stillUncategorized.length} to Gemini AI...`);
+      console.log(`[Categorizer] Rule-based matched ${updated}. Sending ${stillUncategorized.length} to Groq AI...`);
       const categoryNames = categories.map((c) => c.name);
       const aiInput = stillUncategorized.map((tx) => ({
         id: tx.id,
@@ -236,7 +236,7 @@ export class ConnectionsService {
       }));
 
       const aiResults = await this.aiCategorizer.categorize(aiInput, categoryNames);
-      console.log(`[Categorizer] Gemini categorized ${aiResults.size} transactions.`);
+      console.log(`[Categorizer] Groq categorized ${aiResults.size} transactions.`);
 
       for (const [txId, catName] of aiResults) {
         const categoryId = catMap.get(catName);
@@ -248,6 +248,28 @@ export class ConnectionsService {
     }
 
     return { updated };
+  }
+
+  async handlePlaidWebhook(webhookType: string, webhookCode: string, itemId: string) {
+    const connection = await this.prisma.connection.findUnique({ where: { plaidItemId: itemId } });
+    if (!connection) return;
+
+    if (webhookType === 'TRANSACTIONS') {
+      // New or updated transactions are available — sync them
+      if (['INITIAL_UPDATE', 'DEFAULT_UPDATE', 'HISTORICAL_UPDATE'].includes(webhookCode)) {
+        const days = webhookCode === 'HISTORICAL_UPDATE' ? 730 : 14;
+        await this.syncConnectionTransactions(connection.userId, connection.id, connection.plaidAccessToken, days);
+        await this.recategorizeTransactions(connection.userId);
+      }
+    } else if (webhookType === 'ITEM') {
+      if (webhookCode === 'ERROR') {
+        await this.prisma.connection.update({ where: { id: connection.id }, data: { status: 'ERROR' } });
+      } else if (webhookCode === 'PENDING_EXPIRATION') {
+        await this.prisma.connection.update({ where: { id: connection.id }, data: { status: 'EXPIRED' } });
+      } else if (webhookCode === 'LOGIN_REPAIRED') {
+        await this.prisma.connection.update({ where: { id: connection.id }, data: { status: 'ACTIVE' } });
+      }
+    }
   }
 
   async deleteConnection(userId: string, connectionId: string) {

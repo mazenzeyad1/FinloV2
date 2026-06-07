@@ -49,3 +49,17 @@ export function useLogout() {
     })
   }
 }
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (d: { email: string }) =>
+      api.post('/auth/forgot-password', d).then((r) => r.data),
+  })
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (d: { token: string; password: string }) =>
+      api.post('/auth/reset-password', d).then((r) => r.data),
+  })
+}
