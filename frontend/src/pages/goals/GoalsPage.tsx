@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { format } from 'date-fns'
+import { format, differenceInCalendarMonths, differenceInCalendarDays } from 'date-fns'
 import { PlusIcon, PencilIcon, TrashIcon, FlagIcon } from '@heroicons/react/24/outline'
 import { useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal, useContributeToGoal } from '../../hooks/useGoals'
 import { ProgressBar } from '../../components/ui/ProgressBar'
 import { Modal } from '../../components/ui/Modal'
+import { Field } from '../../components/ui/Field'
+import { toast } from '../../store/toast.store'
 
 const CAD = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' })
 
@@ -48,29 +50,44 @@ export function GoalsPage() {
 
   const handleCreate = async () => {
     if (!newName || !newTarget) return
-    await createGoal.mutateAsync({
-      name: newName, emoji: newEmoji || undefined,
-      targetAmount: parseFloat(newTarget),
-      targetDate: newDate || undefined,
-    })
-    setShowCreate(false)
-    setNewName(''); setNewEmoji(''); setNewTarget(''); setNewDate('')
+    try {
+      await createGoal.mutateAsync({
+        name: newName, emoji: newEmoji || undefined,
+        targetAmount: parseFloat(newTarget),
+        targetDate: newDate || undefined,
+      })
+      toast.success('Goal created')
+      setShowCreate(false)
+      setNewName(''); setNewEmoji(''); setNewTarget(''); setNewDate('')
+    } catch {
+      toast.error('Could not create goal')
+    }
   }
 
   const handleEdit = async () => {
     if (!showEdit) return
-    await updateGoal.mutateAsync({
-      id: showEdit.id,
-      data: { name: editName, emoji: editEmoji || undefined, targetAmount: parseFloat(editTarget), targetDate: editDate || undefined },
-    })
-    setShowEdit(null)
+    try {
+      await updateGoal.mutateAsync({
+        id: showEdit.id,
+        data: { name: editName, emoji: editEmoji || undefined, targetAmount: parseFloat(editTarget), targetDate: editDate || undefined },
+      })
+      toast.success('Goal updated')
+      setShowEdit(null)
+    } catch {
+      toast.error('Could not update goal')
+    }
   }
 
   const handleContribute = async () => {
     if (!showContribute || !contribAmount) return
-    await contribute.mutateAsync({ id: showContribute.id, amount: parseFloat(contribAmount), note: contribNote || undefined })
-    setShowContribute(null)
-    setContribAmount(''); setContribNote('')
+    try {
+      await contribute.mutateAsync({ id: showContribute.id, amount: parseFloat(contribAmount), note: contribNote || undefined })
+      toast.success(`Added ${CAD.format(parseFloat(contribAmount))} to ${showContribute.name}`)
+      setShowContribute(null)
+      setContribAmount(''); setContribNote('')
+    } catch {
+      toast.error('Could not add contribution')
+    }
   }
 
   return (
@@ -104,6 +121,25 @@ export function GoalsPage() {
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
           {goals?.map((goal: any) => {
             const pct = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0
+            const remaining = Math.max(0, goal.targetAmount - goal.currentAmount)
+            const reached = goal.targetAmount > 0 && goal.currentAmount >= goal.targetAmount
+            let projection: string | null = null
+            if (reached) {
+              projection = '🎉 Goal reached!'
+            } else if (goal.targetDate) {
+              const target = new Date(goal.targetDate)
+              const daysLeft = differenceInCalendarDays(target, new Date())
+              const monthsLeft = differenceInCalendarMonths(target, new Date())
+              if (daysLeft < 0) {
+                projection = `${CAD.format(remaining)} to go · target date passed`
+              } else if (monthsLeft >= 1) {
+                projection = `Save ${CAD.format(remaining / monthsLeft)}/mo to reach by ${format(target, 'MMM yyyy')}`
+              } else {
+                projection = `${CAD.format(remaining)} to go · by ${format(target, 'MMM d')}`
+              }
+            } else {
+              projection = `${CAD.format(remaining)} to go`
+            }
             return (
               <div key={goal.id} className="card p-5">
                 <div className="flex items-start justify-between mb-3">
@@ -121,7 +157,7 @@ export function GoalsPage() {
                       <PencilIcon className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => { if (confirm('Delete this goal?')) deleteGoal.mutate(goal.id) }}
+                      onClick={() => { if (confirm('Delete this goal?')) deleteGoal.mutate(goal.id, { onSuccess: () => toast.success('Goal deleted'), onError: () => toast.error('Could not delete goal') }) }}
                       className="text-text-3 hover:text-danger transition-colors p-1"
                     >
                       <TrashIcon className="w-3.5 h-3.5" />
@@ -134,7 +170,12 @@ export function GoalsPage() {
                     <span>{CAD.format(goal.targetAmount)}</span>
                   </div>
                   <ProgressBar value={pct} color={progressColor(pct)} height={8} />
-                  <p className="text-[11px] text-text-3 mt-1">{pct.toFixed(0)}% complete</p>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <p className="text-[11px] text-text-3">{pct.toFixed(0)}% complete</p>
+                    {projection && (
+                      <p className={`text-[11px] font-medium ${reached ? 'text-success' : 'text-text-2'}`}>{projection}</p>
+                    )}
+                  </div>
                 </div>
                 <button onClick={() => setShowContribute(goal)} className="btn btn-secondary btn-sm w-full">
                   Add funds
@@ -148,23 +189,18 @@ export function GoalsPage() {
       {/* Create modal */}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New goal">
         <div className="space-y-3">
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Goal name</label>
-            <input className="input" placeholder="e.g. Emergency fund" value={newName} onChange={(e) => setNewName(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Emoji (optional)</label>
-            <input className="input" placeholder="🏠" value={newEmoji} onChange={(e) => setNewEmoji(e.target.value)} maxLength={2} />
-          </div>
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Target amount ($)</label>
-            <input type="number" className="input" placeholder="5000" value={newTarget} onChange={(e) => setNewTarget(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Target date (optional)</label>
-            <input type="date" className="input" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
-          </div>
-          {createGoal.isError && <p className="text-[12px] text-danger">Failed to create goal</p>}
+          <Field label="Goal name">
+            {(id) => <input id={id} className="input" placeholder="e.g. Emergency fund" value={newName} onChange={(e) => setNewName(e.target.value)} />}
+          </Field>
+          <Field label="Emoji (optional)">
+            {(id) => <input id={id} className="input" placeholder="🏠" value={newEmoji} onChange={(e) => setNewEmoji(e.target.value)} maxLength={2} />}
+          </Field>
+          <Field label="Target amount ($)">
+            {(id) => <input id={id} type="number" className="input" placeholder="5000" value={newTarget} onChange={(e) => setNewTarget(e.target.value)} />}
+          </Field>
+          <Field label="Target date (optional)">
+            {(id) => <input id={id} type="date" className="input" value={newDate} onChange={(e) => setNewDate(e.target.value)} />}
+          </Field>
           <button className="btn btn-primary w-full" onClick={handleCreate} disabled={createGoal.isPending}>
             {createGoal.isPending ? 'Creating...' : 'Create goal'}
           </button>
@@ -174,22 +210,18 @@ export function GoalsPage() {
       {/* Edit modal */}
       <Modal open={!!showEdit} onClose={() => setShowEdit(null)} title="Edit goal">
         <div className="space-y-3">
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Goal name</label>
-            <input className="input" value={editName} onChange={(e) => setEditName(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Emoji</label>
-            <input className="input" value={editEmoji} onChange={(e) => setEditEmoji(e.target.value)} maxLength={2} />
-          </div>
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Target amount ($)</label>
-            <input type="number" className="input" value={editTarget} onChange={(e) => setEditTarget(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Target date</label>
-            <input type="date" className="input" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
-          </div>
+          <Field label="Goal name">
+            {(id) => <input id={id} className="input" value={editName} onChange={(e) => setEditName(e.target.value)} />}
+          </Field>
+          <Field label="Emoji">
+            {(id) => <input id={id} className="input" value={editEmoji} onChange={(e) => setEditEmoji(e.target.value)} maxLength={2} />}
+          </Field>
+          <Field label="Target amount ($)">
+            {(id) => <input id={id} type="number" className="input" value={editTarget} onChange={(e) => setEditTarget(e.target.value)} />}
+          </Field>
+          <Field label="Target date">
+            {(id) => <input id={id} type="date" className="input" value={editDate} onChange={(e) => setEditDate(e.target.value)} />}
+          </Field>
           <button className="btn btn-primary w-full" onClick={handleEdit} disabled={updateGoal.isPending}>
             {updateGoal.isPending ? 'Saving...' : 'Save changes'}
           </button>
@@ -199,15 +231,12 @@ export function GoalsPage() {
       {/* Contribute modal */}
       <Modal open={!!showContribute} onClose={() => setShowContribute(null)} title={`Add funds — ${showContribute?.name}`}>
         <div className="space-y-3">
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Amount ($)</label>
-            <input type="number" className="input" placeholder="100" value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-[11px] text-text-3 font-medium mb-1 block">Note (optional)</label>
-            <input className="input" placeholder="Monthly deposit" value={contribNote} onChange={(e) => setContribNote(e.target.value)} />
-          </div>
-          {contribute.isError && <p className="text-[12px] text-danger">Failed to add contribution</p>}
+          <Field label="Amount ($)">
+            {(id) => <input id={id} type="number" className="input" placeholder="100" value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} />}
+          </Field>
+          <Field label="Note (optional)">
+            {(id) => <input id={id} className="input" placeholder="Monthly deposit" value={contribNote} onChange={(e) => setContribNote(e.target.value)} />}
+          </Field>
           <button className="btn btn-primary w-full" onClick={handleContribute} disabled={contribute.isPending}>
             {contribute.isPending ? 'Adding...' : 'Add funds'}
           </button>

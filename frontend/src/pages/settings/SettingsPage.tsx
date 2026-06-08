@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/auth.store'
 import { useUpdateProfile, useChangePassword, useChangeEmail, useDeleteAccount } from '../../hooks/useUsers'
+import { toast } from '../../store/toast.store'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -21,7 +22,6 @@ export function SettingsPage() {
   const updateProfile = useUpdateProfile()
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
-  const [profileMsg, setProfileMsg] = useState('')
 
   // Password
   const changePassword = useChangePassword()
@@ -45,10 +45,12 @@ export function SettingsPage() {
 
   const saveProfile = (e: React.FormEvent) => {
     e.preventDefault()
-    setProfileMsg('')
     updateProfile.mutate(
       { firstName, lastName },
-      { onSuccess: () => setProfileMsg('Saved') },
+      {
+        onSuccess: () => toast.success('Profile saved'),
+        onError: () => toast.error('Could not save profile'),
+      },
     )
   }
 
@@ -107,8 +109,6 @@ export function SettingsPage() {
           <button type="submit" disabled={updateProfile.isPending} className="btn btn-primary">
             {updateProfile.isPending ? 'Saving...' : 'Save changes'}
           </button>
-          {profileMsg && <span className="text-[12px] text-success">{profileMsg}</span>}
-          {updateProfile.isError && <span className="text-[12px] text-danger">Could not save</span>}
         </div>
       </form>
 

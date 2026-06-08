@@ -1,26 +1,39 @@
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
 import { ProtectedRoute } from './ProtectedRoute'
-import { LoginPage }        from './pages/auth/LoginPage'
-import { RegisterPage }     from './pages/auth/RegisterPage'
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
-import { ResetPasswordPage }  from './pages/auth/ResetPasswordPage'
-import { VerifyEmailPage }    from './pages/auth/VerifyEmailPage'
-import { DashboardPage }    from './pages/dashboard/DashboardPage'
-import { TransactionsPage } from './pages/transactions/TransactionsPage'
-import { BudgetsPage }      from './pages/budgets/BudgetsPage'
-import { GoalsPage }        from './pages/goals/GoalsPage'
-import { AccountsPage }     from './pages/accounts/AccountsPage'
-import { SettingsPage }     from './pages/settings/SettingsPage'
-import { VerifyEmailChangePage } from './pages/auth/VerifyEmailChangePage'
+
+// Lazy-load every page so heavy deps (recharts, plaid-link) only ship when needed.
+const LoginPage            = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })))
+const RegisterPage         = lazy(() => import('./pages/auth/RegisterPage').then(m => ({ default: m.RegisterPage })))
+const ForgotPasswordPage   = lazy(() => import('./pages/auth/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage    = lazy(() => import('./pages/auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
+const VerifyEmailPage      = lazy(() => import('./pages/auth/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })))
+const VerifyEmailChangePage = lazy(() => import('./pages/auth/VerifyEmailChangePage').then(m => ({ default: m.VerifyEmailChangePage })))
+const DashboardPage        = lazy(() => import('./pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const TransactionsPage     = lazy(() => import('./pages/transactions/TransactionsPage').then(m => ({ default: m.TransactionsPage })))
+const BudgetsPage          = lazy(() => import('./pages/budgets/BudgetsPage').then(m => ({ default: m.BudgetsPage })))
+const GoalsPage            = lazy(() => import('./pages/goals/GoalsPage').then(m => ({ default: m.GoalsPage })))
+const AccountsPage         = lazy(() => import('./pages/accounts/AccountsPage').then(m => ({ default: m.AccountsPage })))
+const SettingsPage         = lazy(() => import('./pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
+
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center py-20" role="status" aria-label="Loading">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+}
+
+const s = (node: React.ReactNode) => <Suspense fallback={<PageFallback />}>{node}</Suspense>
 
 export const router = createBrowserRouter([
-  { path: '/login',           element: <LoginPage /> },
-  { path: '/register',        element: <RegisterPage /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  { path: '/reset-password',  element: <ResetPasswordPage /> },
-  { path: '/verify-email',    element: <VerifyEmailPage /> },
-  { path: '/verify-email-change', element: <VerifyEmailChangePage /> },
+  { path: '/login',           element: s(<LoginPage />) },
+  { path: '/register',        element: s(<RegisterPage />) },
+  { path: '/forgot-password', element: s(<ForgotPasswordPage />) },
+  { path: '/reset-password',  element: s(<ResetPasswordPage />) },
+  { path: '/verify-email',    element: s(<VerifyEmailPage />) },
+  { path: '/verify-email-change', element: s(<VerifyEmailChangePage />) },
   {
     path: '/check-email',
     element: (
@@ -46,12 +59,12 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: '/',             element: <Navigate to="/dashboard" replace /> },
-      { path: '/dashboard',    element: <DashboardPage /> },
-      { path: '/transactions', element: <TransactionsPage /> },
-      { path: '/budgets',      element: <BudgetsPage /> },
-      { path: '/goals',        element: <GoalsPage /> },
-      { path: '/accounts',     element: <AccountsPage /> },
-      { path: '/settings',     element: <SettingsPage /> },
+      { path: '/dashboard',    element: s(<DashboardPage />) },
+      { path: '/transactions', element: s(<TransactionsPage />) },
+      { path: '/budgets',      element: s(<BudgetsPage />) },
+      { path: '/goals',        element: s(<GoalsPage />) },
+      { path: '/accounts',     element: s(<AccountsPage />) },
+      { path: '/settings',     element: s(<SettingsPage />) },
     ],
   },
 ])

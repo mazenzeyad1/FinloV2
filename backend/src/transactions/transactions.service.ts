@@ -80,6 +80,8 @@ export class TransactionsService {
   async bulkUpdateCategory(userId: string, ids: string[], categoryId: string) {
     const category = await this.prisma.category.findUnique({ where: { id: categoryId } });
     if (!category) throw AppExceptions.notFound(ERROR_CODES.RESOURCE_NOT_FOUND);
+    // Only allow assigning to a built-in category or one the user owns
+    if (category.userId !== null && category.userId !== userId) throw AppExceptions.forbidden();
     const result = await this.prisma.transaction.updateMany({
       where: { id: { in: ids }, userId },
       data: { categoryId },
@@ -87,10 +89,41 @@ export class TransactionsService {
     return { updated: result.count };
   }
 
-  async getCategories() {
+  // Built-in categories (userId null) plus the user's own custom ones
+  async getCategories(userId: string) {
     return this.prisma.category.findMany({
+      where: { OR: [{ userId: null }, { userId }] },
       orderBy: [{ groupName: 'asc' }, { name: 'asc' }],
     });
+  }
+
+  async createCategory(userId: string, name: string) {
+    const trimmed = (name ?? '').trim();
+    if (!trimmed) throw AppExceptions.badRequest(ERROR_CODES.INVALID_INPUT);
+    // Reject duplicates against built-in categories or the user's existing ones
+    const existing = await this.prisma.category.findFirst({
+      where: {
+        name: { equals: trimmed, mode: 'insensitive' },
+        OR: [{ userId: null }, { userId }],
+      },
+    });
+    if (existing) throw AppExceptions.conflict(ERROR_CODES.RESOURCE_ALREADY_EXISTS);
+    return this.prisma.category.create({
+      data: { name: trimmed, groupName: 'Other', userId, isDefault: false },
+    });
+  }
+
+  async deleteCategory(userId: string, id: string) {
+    const cat = await this.prisma.category.findUnique({ where: { id } });
+    if (!cat) throw AppExceptions.notFound(ERROR_CODES.RESOURCE_NOT_FOUND);
+    // Only the owner can delete, and built-in categories can never be deleted
+    if (cat.userId !== userId) throw AppExceptions.forbidden();
+    await this.prisma.$transaction([
+      this.prisma.transaction.updateMany({ where: { categoryId: id, userId }, data: { categoryId: null } }),
+      this.prisma.budget.deleteMany({ where: { categoryId: id, userId } }),
+      this.prisma.category.delete({ where: { id } }),
+    ]);
+    return { message: 'Category deleted' };
   }
 
   async getSummary(userId: string, month: number, year: number) {

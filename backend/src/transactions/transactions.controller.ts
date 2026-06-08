@@ -1,10 +1,10 @@
 import {
-  Controller, Get, Patch, Post, Param, Body, Query, UseGuards, Request,
+  Controller, Get, Patch, Post, Delete, Param, Body, Query, UseGuards, Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
-import { QueryTransactionsDto, UpdateTransactionDto, BulkUpdateCategoryDto, SummaryQueryDto } from './dto/query.dto';
+import { QueryTransactionsDto, UpdateTransactionDto, BulkUpdateCategoryDto, SummaryQueryDto, CreateCategoryDto } from './dto/query.dto';
 
 @ApiTags('transactions')
 @ApiBearerAuth()
@@ -27,9 +27,21 @@ export class TransactionsController {
   }
 
   @Get('categories')
-  @ApiOperation({ summary: 'Get all transaction categories' })
-  getCategories() {
-    return this.service.getCategories();
+  @ApiOperation({ summary: 'Get built-in plus the user\'s custom categories' })
+  getCategories(@Request() req: any) {
+    return this.service.getCategories(req.user.id);
+  }
+
+  @Post('categories')
+  @ApiOperation({ summary: 'Create a custom category (filed under "Other")' })
+  createCategory(@Request() req: any, @Body() dto: CreateCategoryDto) {
+    return this.service.createCategory(req.user.id, dto.name);
+  }
+
+  @Delete('categories/:id')
+  @ApiOperation({ summary: 'Delete a custom category you own' })
+  deleteCategory(@Request() req: any, @Param('id') id: string) {
+    return this.service.deleteCategory(req.user.id, id);
   }
 
   @Get(':id')

@@ -202,7 +202,9 @@ export class ConnectionsService {
   }
 
   async recategorizeTransactions(userId: string) {
-    const categories = await this.prisma.category.findMany();
+    // Auto-categorization (rules + Groq) only ever targets built-in categories
+    // (userId null). Custom, user-created categories are assigned manually.
+    const categories = await this.prisma.category.findMany({ where: { userId: null } });
     const catMap = new Map(categories.map((c) => [c.name, c.id]));
 
     const txns = await this.prisma.transaction.findMany({
@@ -295,7 +297,9 @@ export class ConnectionsService {
     });
     const accountMap = new Map(accounts.map((a) => [a.externalId, a.id]));
 
-    const categories = await this.prisma.category.findMany();
+    // Auto-categorization (rules + Groq) only ever targets built-in categories
+    // (userId null). Custom, user-created categories are assigned manually.
+    const categories = await this.prisma.category.findMany({ where: { userId: null } });
     const catMap = new Map(categories.map((c) => [c.name, c.id]));
 
     const externalIds = plaidTxns.map((t) => t.transaction_id);

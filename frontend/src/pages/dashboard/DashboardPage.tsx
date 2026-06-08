@@ -28,19 +28,33 @@ export function DashboardPage() {
   const now = new Date()
   const sevenDaysAgo = format(subDays(now, 6), 'yyyy-MM-dd')
   const thirtyDaysAgo = format(subDays(now, 29), 'yyyy-MM-dd')
+  const sixtyDaysAgo = format(subDays(now, 59), 'yyyy-MM-dd')
+  const thirtyOneDaysAgo = format(subDays(now, 30), 'yyyy-MM-dd')
   const today = format(now, 'yyyy-MM-dd')
 
   const { data: accounts, isLoading: loadingAccounts } = useAccounts()
   const { data: recentData, isLoading: loadingRecent } = useTransactions({ pageSize: 5, sortBy: 'date', sortDir: 'desc' })
   const { data: weekData } = useTransactions({ from: sevenDaysAgo, to: today, pageSize: 200 })
   const { data: monthData, isLoading: loadingMonth } = useTransactions({ from: thirtyDaysAgo, to: today, pageSize: 500 })
+  const { data: prevMonthData } = useTransactions({ from: sixtyDaysAgo, to: thirtyOneDaysAgo, pageSize: 500 })
 
   const netWorth = accounts?.reduce((sum: number, a: any) => sum + a.balance, 0) ?? 0
 
   // Compute income/expenses from last 30 days of transactions
   const income = monthData?.data?.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0) ?? 0
   const expenses = monthData?.data?.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0) ?? 0
-  const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0
+  const rawSavingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0
+  // Clamp for display — a 30-day window can catch little income and produce
+  // absurd values (e.g. -2000%); cap so the metric stays meaningful.
+  const savingsRate = Math.max(-100, Math.min(100, rawSavingsRate))
+
+  // Trend vs the previous 30-day window
+  const prevIncome = prevMonthData?.data?.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0) ?? 0
+  const prevExpenses = prevMonthData?.data?.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0) ?? 0
+  const pctDelta = (curr: number, prev: number) => (prev > 0 ? ((curr - prev) / prev) * 100 : null)
+  const incomeDelta = pctDelta(income, prevIncome)
+  const expenseDelta = pctDelta(expenses, prevExpenses)
+  const fmtDelta = (d: number | null) => (d == null ? undefined : `${d >= 0 ? '+' : ''}${d.toFixed(0)}% vs prev 30d`)
 
   const spendByDay: Record<string, number> = {}
   for (let i = 6; i >= 0; i--) {
@@ -85,12 +99,28 @@ export function DashboardPage() {
         ) : (
           <>
             <MetricCard label="Net worth" value={CAD.format(netWorth)} accent />
-            <MetricCard label="Income (30d)" value={CAD.format(income)} changeType="up" />
-            <MetricCard label="Spend (30d)" value={CAD.format(expenses)} changeType="down" />
+            <MetricCard
+              label="Income (30d)"
+              value={CAD.format(income)}
+              change={fmtDelta(incomeDelta)}
+              changeType={incomeDelta == null ? 'neutral' : incomeDelta >= 0 ? 'up' : 'down'}
+            />
+            <MetricCard
+              label="Spend (30d)"
+              value={CAD.format(expenses)}
+              change={fmtDelta(expenseDelta)}
+              changeType={expenseDelta == null ? 'neutral' : expenseDelta <= 0 ? 'up' : 'down'}
+            />
             <MetricCard
               label="Savings rate"
-              value={`${savingsRate.toFixed(1)}%`}
-              changeType={savingsRate >= 20 ? 'up' : 'neutral'}
+              value={income > 0 ? `${savingsRate.toFixed(0)}%` : '—'}
+              change={
+                income <= 0 ? 'No income in range'
+                : rawSavingsRate < 0 ? 'Spending exceeds income'
+                : rawSavingsRate >= 20 ? 'On track'
+                : undefined
+              }
+              changeType={rawSavingsRate >= 20 ? 'up' : rawSavingsRate < 0 ? 'down' : 'neutral'}
             />
           </>
         )}

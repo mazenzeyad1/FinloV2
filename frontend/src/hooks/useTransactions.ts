@@ -39,7 +39,31 @@ export function useTransactionSummary(month: number, year: number) {
 export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
-    queryFn: () => api.get('/transactions/categories').then((r) => r.data as { id: string; name: string; groupName: string }[]),
+    queryFn: () => api.get('/transactions/categories').then((r) => r.data as { id: string; name: string; groupName: string; isDefault: boolean; userId: string | null }[]),
+  })
+}
+
+export function useCreateCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) =>
+      api.post('/transactions/categories', { name }).then((r) => r.data as { id: string; name: string; groupName: string }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['categories'] })
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+    },
+  })
+}
+
+export function useDeleteCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/transactions/categories/${id}`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['categories'] })
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+    },
   })
 }
 

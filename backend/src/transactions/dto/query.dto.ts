@@ -52,3 +52,7 @@ export class SummaryQueryDto {
   @Type(() => Number) @IsInt() month: number;
   @Type(() => Number) @IsInt() year: number;
 }
+
+export class CreateCategoryDto {
+  @IsString() @IsNotEmpty() name: string;
+}

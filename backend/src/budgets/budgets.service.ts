@@ -19,7 +19,9 @@ export class BudgetsService {
         where: { userId, date: { gte: start, lt: end }, amount: { gt: 0 } },
         select: { categoryId: true, amount: true },
       }),
-      this.prisma.category.findMany(),
+      this.prisma.category.findMany({
+        where: { OR: [{ userId: null }, { userId }] },
+      }),
     ]);
 
     const spendMap = new Map<string, number>();
@@ -42,6 +44,7 @@ export class BudgetsService {
         categoryId: cat.id,
         categoryName: cat.name,
         groupName: cat.groupName,
+        isCustom: cat.userId !== null,
         plannedAmount,
         spentAmount,
         remaining,

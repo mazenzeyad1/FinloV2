@@ -22,6 +22,7 @@ model User {
   accounts      Account[]
   transactions  Transaction[]
   budgets       Budget[]
+  categories    Category[]
   goals         Goal[]
   sentTransfers Transfer[]     @relation("SentTransfers")
   recvTransfers Transfer[]     @relation("ReceivedTransfers")
@@ -98,13 +99,17 @@ model Account {
 
 model Category {
   id           String        @id @default(uuid())
-  name         String        @unique
+  userId       String?
+  name         String
   groupName    String
   icon         String?
   isDefault    Boolean       @default(true)
   createdAt    DateTime      @default(now())
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   budgets      Budget[]
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model Transaction {

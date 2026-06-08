@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAccounts, useSyncAccounts } from '../../hooks/useAccounts'
 import { useConnections, useDeleteConnection } from '../../hooks/useConnections'
 import { PlaidLink } from '../../components/plaid/PlaidLink'
@@ -43,6 +44,18 @@ export function AccountsPage() {
   const deleteConn = useDeleteConnection()
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
+  // Auto-sync balances on mount, at most once every 30 minutes
+  useEffect(() => {
+    const COOLDOWN_MS = 30 * 60 * 1000
+    const key = 'finlo_last_balance_sync'
+    const last = Number(localStorage.getItem(key) ?? 0)
+    if (Date.now() - last > COOLDOWN_MS) {
+      syncBalances.mutate(undefined, {
+        onSuccess: () => localStorage.setItem(key, String(Date.now())),
+      })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const accountsByConnection: Record<string, any[]> = {}
   if (accounts) {
     for (const a of accounts) {
@@ -65,12 +78,15 @@ export function AccountsPage() {
         <h1 className="text-[22px] font-semibold text-text-1">Accounts</h1>
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => syncBalances.mutate()}
+            onClick={() => syncBalances.mutate(undefined, {
+              onSuccess: () => localStorage.setItem('finlo_last_balance_sync', String(Date.now())),
+            })}
             disabled={syncBalances.isPending}
             className="btn btn-ghost btn-sm"
+            title="Refresh balances"
           >
             <ArrowPathIcon className={`w-4 h-4 ${syncBalances.isPending ? 'animate-spin' : ''}`} />
-            {syncBalances.isPending ? 'Syncing...' : 'Sync balances'}
+            {syncBalances.isPending ? 'Syncing...' : 'Refresh'}
           </button>
           <PlaidLink />
         </div>
@@ -216,12 +232,13 @@ export function AccountsPage() {
                         </div>
                         <div className="space-y-0">
                           {typeAccounts.map((a: any) => (
-                            <div
+                            <Link
                               key={a.id}
-                              className="flex items-center justify-between py-2.5 border-b border-black/[0.04] last:border-0"
+                              to={`/transactions?accountId=${a.id}`}
+                              className="flex items-center justify-between py-2.5 border-b border-black/[0.04] last:border-0 -mx-2 px-2 rounded-lg hover:bg-surface-2/60 transition-colors group"
                             >
                               <div>
-                                <p className="text-[13px] font-medium text-text-1">{a.name}</p>
+                                <p className="text-[13px] font-medium text-text-1 group-hover:text-primary transition-colors">{a.name}</p>
                                 <p className="text-[11px] text-text-3">
                                   {a.subtype
                                     ? a.subtype.charAt(0).toUpperCase() + a.subtype.slice(1)
@@ -230,7 +247,7 @@ export function AccountsPage() {
                                 </p>
                               </div>
                               <p className="text-[18px] font-semibold text-text-1">{CAD.format(a.balance)}</p>
-                            </div>
+                            </Link>
                           ))}
                         </div>
                       </div>
