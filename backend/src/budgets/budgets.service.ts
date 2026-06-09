@@ -80,19 +80,17 @@ export class BudgetsService {
       where: { userId, year: prevYear, month: prevMonth },
     });
 
-    let copied = 0;
-    for (const b of prevBudgets) {
-      const exists = await this.prisma.budget.findUnique({
-        where: { userId_categoryId_year_month: { userId, categoryId: b.categoryId, year, month } },
-      });
-      if (!exists) {
-        await this.prisma.budget.create({
-          data: { userId, categoryId: b.categoryId, year, month, plannedAmount: b.plannedAmount },
-        });
-        copied++;
-      }
-    }
+    const result = await this.prisma.budget.createMany({
+      data: prevBudgets.map((b) => ({
+        userId,
+        categoryId: b.categoryId,
+        year,
+        month,
+        plannedAmount: b.plannedAmount,
+      })),
+      skipDuplicates: true,
+    });
 
-    return { copied };
+    return { copied: result.count };
   }
 }

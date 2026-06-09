@@ -60,8 +60,8 @@ export class TransfersService {
         },
       });
 
-      const senderName = `${transfer.recipient.firstName ?? ''} ${transfer.recipient.lastName ?? ''}`.trim();
-      const recipientName = `${transfer.sender.firstName ?? ''} ${transfer.sender.lastName ?? ''}`.trim();
+      const senderName = `${transfer.sender.firstName ?? ''} ${transfer.sender.lastName ?? ''}`.trim();
+      const recipientName = `${transfer.recipient.firstName ?? ''} ${transfer.recipient.lastName ?? ''}`.trim();
 
       await tx.transaction.create({
         data: {

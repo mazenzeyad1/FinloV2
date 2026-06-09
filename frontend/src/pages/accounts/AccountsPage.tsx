@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useAccounts, useSyncAccounts } from '../../hooks/useAccounts'
+import { useAccounts, useSyncAccounts, useNetWorthHistory } from '../../hooks/useAccounts'
 import { useConnections, useDeleteConnection } from '../../hooks/useConnections'
+import { NetWorthChart } from '../../components/charts/NetWorthChart'
+import { ErrorBoundary } from '../../components/ui/ErrorBoundary'
 import { PlaidLink } from '../../components/plaid/PlaidLink'
 import { Badge } from '../../components/ui/Badge'
 import {
@@ -40,6 +42,7 @@ const TYPE_LABEL: Record<string, string> = {
 export function AccountsPage() {
   const { data: accounts, isLoading: loadingAccounts } = useAccounts()
   const { data: connections, isLoading: loadingConns } = useConnections()
+  const { data: netWorthHistory } = useNetWorthHistory(12)
   const syncBalances = useSyncAccounts()
   const deleteConn = useDeleteConnection()
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -65,7 +68,11 @@ export function AccountsPage() {
     }
   }
 
-  const netWorth = accounts?.reduce((sum: number, a: any) => sum + (a.balance ?? 0), 0) ?? 0
+  const LIABILITY_TYPES = ['credit', 'loan']
+  const netWorth = accounts?.reduce((sum: number, a: any) => {
+    const balance = a.balance ?? 0
+    return sum + (LIABILITY_TYPES.includes(a.type) ? -balance : balance)
+  }, 0) ?? 0
 
   const handleDelete = (id: string) => {
     deleteConn.mutate(id, { onSuccess: () => setConfirmDeleteId(null) })
@@ -116,7 +123,16 @@ export function AccountsPage() {
         </div>
       )}
 
-      {/* Banners */}
+      {/* Net worth history chart */}
+      {netWorthHistory && netWorthHistory.length > 1 && (
+        <ErrorBoundary>
+          <div className="card p-5">
+            <p className="text-[13px] font-semibold text-text-1 mb-4">Net worth — last 12 months</p>
+            <NetWorthChart data={netWorthHistory} />
+          </div>
+        </ErrorBoundary>
+      )}
+
       {/* Content */}
       {loadingConns || loadingAccounts ? (
         <div className="space-y-4">

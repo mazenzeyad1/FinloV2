@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AccountsService } from './accounts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
@@ -14,6 +14,12 @@ export class AccountsController {
   @ApiOperation({ summary: 'Get all accounts for current user' })
   getAccounts(@Request() req: any) {
     return this.service.getAccounts(req.user.id);
+  }
+
+  @Get('net-worth-history')
+  @ApiOperation({ summary: 'Get monthly net worth snapshots (last N months)' })
+  getNetWorthHistory(@Request() req: any, @Query('months') months?: string) {
+    return this.service.getNetWorthHistory(req.user.id, months ? parseInt(months, 10) : 12);
   }
 
   @Get(':id')

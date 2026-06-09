@@ -8,6 +8,7 @@ A personal finance app that connects to your bank accounts via Plaid, automatica
 |---|---|
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS |
 | Backend | NestJS, TypeScript |
+| Mobile | React Native (Expo ~54), NativeWind |
 | Database | PostgreSQL (Neon) via Prisma ORM |
 | Auth | JWT (access + refresh tokens), Passport.js |
 | Banking | Plaid API |
@@ -29,11 +30,11 @@ FinloV2/
 ├── backend/          # NestJS API (port 3000)
 │   ├── src/
 │   │   ├── app/              # Root module
-│   │   ├── auth/             # Login, register, JWT, email verification, password reset
-│   │   ├── users/            # User profile management
+│   │   ├── auth/             # Login, register, JWT, email verification, password reset, email change
+│   │   ├── users/            # User profile & settings management
 │   │   ├── connections/      # Plaid bank connections + transaction sync + AI categorization
 │   │   ├── accounts/         # Bank accounts synced from Plaid
-│   │   ├── transactions/     # Transaction history & manual category edits
+│   │   ├── transactions/     # Transaction history, filters, manual category edits
 │   │   ├── budgets/          # Monthly budgets per category
 │   │   ├── goals/            # Savings goals & contributions
 │   │   ├── transfers/        # Peer-to-peer transfers between users
@@ -49,13 +50,23 @@ FinloV2/
 │   └── prisma/
 │       ├── schema.prisma     # Database schema
 │       └── seed.ts           # Default categories seed
-└── frontend/         # React app (port 5174)
+├── frontend/         # React app (port 5174)
+│   └── src/
+│       ├── pages/        # auth, dashboard, accounts, transactions, budgets, goals, settings
+│       ├── components/   # Layout, charts, Plaid Link, shared UI, Toaster
+│       ├── hooks/        # TanStack Query hooks per feature
+│       ├── store/        # Zustand auth + toast stores
+│       └── lib/          # Axios API client
+├── mobile/           # React Native app (Expo)
+│   └── src/
+│       ├── screens/      # Login, Register, Dashboard, Accounts, Transactions
+│       ├── hooks/        # TanStack Query hooks
+│       ├── store/        # Zustand auth store (expo-secure-store)
+│       └── lib/          # API client + config
+└── shared/           # Shared TypeScript types & API client
     └── src/
-        ├── pages/        # auth, dashboard, accounts, transactions, budgets, goals
-        ├── components/   # Layout, charts, Plaid Link, shared UI
-        ├── hooks/        # TanStack Query hooks per feature
-        ├── store/        # Zustand auth store
-        └── lib/          # Axios API client
+        ├── types/        # Shared data models
+        └── api/          # Shared Axios client
 ```
 
 ## Prerequisites
@@ -124,6 +135,14 @@ npm run dev
 
 Frontend: `http://localhost:5174` — Backend: `http://localhost:3000`
 
+### 5. Mobile (optional)
+
+```bash
+npm run dev:mobile
+```
+
+Requires Expo Go on your device or an emulator. Update `mobile/src/lib/config.ts` with your local backend URL.
+
 ## Scripts
 
 ### Root (runs both)
@@ -131,6 +150,7 @@ Frontend: `http://localhost:5174` — Backend: `http://localhost:3000`
 | Command | Description |
 |---|---|
 | `npm run dev` | Start backend + frontend together |
+| `npm run dev:mobile` | Start Expo dev server |
 
 ### Backend
 
@@ -152,6 +172,25 @@ Frontend: `http://localhost:5174` — Backend: `http://localhost:3000`
 | `npm run build` | Production build |
 | `npm run preview` | Preview production build |
 
+### Mobile
+
+| Command | Description |
+|---|---|
+| `npm start` | Expo dev server |
+| `npm run android` | Run on Android emulator/device |
+| `npm run ios` | Run on iOS simulator/device |
+
+## Features
+
+- **Dashboard** — net worth, spending breakdown, recent transactions, budget progress
+- **Accounts** — connected bank accounts, net worth (assets minus liabilities), balance sync
+- **Transactions** — full history with filters, search, AI + manual categorization, custom categories
+- **Budgets** — monthly budgets per category with live spend tracking and toasts on overspend
+- **Goals** — savings goals with contribution tracking and progress visualization
+- **Transfers** — peer-to-peer transfers between Finlo users
+- **Settings** — profile editing, email change (with verification), password change
+- **Auth** — register, login, email verification, forgot/reset password, refresh token rotation
+
 ## Transaction Categorization
 
 Transactions are categorized automatically on every sync using a 4-pass pipeline:
@@ -161,7 +200,13 @@ Transactions are categorized automatically on every sync using a 4-pass pipeline
 3. **Keyword matching** — description + merchant name against a keyword map
 4. **AI fallback** — Groq (Llama 3.1) classifies anything still uncategorized
 
-Users can also manually override any category from the transaction detail drawer.
+Users can manually override any category from the transaction detail drawer, and create custom categories from the Budgets or Transactions pages.
+
+## Net Worth Calculation
+
+The Accounts page calculates net worth as **assets minus liabilities**:
+- **Assets** — depository (chequing/savings) and investment accounts are added
+- **Liabilities** — credit card and loan balances are subtracted
 
 ## Plaid Sandbox Testing
 
@@ -191,11 +236,11 @@ To switch to production: set `PLAID_ENV=production` and update `PLAID_SECRET` in
 |---|---|
 | `User` | App users |
 | `RefreshToken` | Hashed refresh tokens |
-| `EmailToken` | Email verification & password reset tokens |
+| `EmailToken` | Email verification, password reset & email change tokens |
 | `Connection` | Plaid bank connections |
 | `Account` | Bank accounts from Plaid |
 | `Transaction` | Synced transactions with category assignments |
-| `Category` | Transaction categories (seeded defaults) |
+| `Category` | Transaction categories (seeded defaults + user custom) |
 | `Budget` | Monthly spending limits per category |
 | `Goal` | Savings goals |
 | `GoalContribution` | Individual goal contributions |

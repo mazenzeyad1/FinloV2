@@ -8,25 +8,26 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  passwordHash  String
-  firstName     String
-  lastName      String
-  isVerified    Boolean        @default(false)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  refreshTokens RefreshToken[]
-  emailTokens   EmailToken[]
-  connections   Connection[]
-  accounts      Account[]
-  transactions  Transaction[]
-  budgets       Budget[]
-  categories    Category[]
-  goals         Goal[]
-  sentTransfers Transfer[]     @relation("SentTransfers")
-  recvTransfers Transfer[]     @relation("ReceivedTransfers")
-  notifications Notification[]
+  id              String           @id @default(uuid())
+  email           String           @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  isVerified      Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  refreshTokens   RefreshToken[]
+  emailTokens     EmailToken[]
+  connections     Connection[]
+  accounts        Account[]
+  transactions    Transaction[]
+  budgets         Budget[]
+  categories      Category[]
+  goals           Goal[]
+  sentTransfers   Transfer[]       @relation("SentTransfers")
+  recvTransfers   Transfer[]       @relation("ReceivedTransfers")
+  notifications   Notification[]
+  householdMember HouseholdMember?
 }
 
 model RefreshToken {
@@ -205,4 +206,38 @@ model Notification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Household {
+  id        String            @id @default(uuid())
+  name      String            @default("Our Household")
+  createdAt DateTime          @default(now())
+  members   HouseholdMember[]
+  invites   HouseholdInvite[]
+}
+
+model HouseholdMember {
+  id          String        @id @default(uuid())
+  householdId String
+  userId      String        @unique
+  role        HouseholdRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+  household   Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HouseholdInvite {
+  id          String    @id @default(uuid())
+  householdId String
+  email       String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+}
+
+enum HouseholdRole {
+  OWNER
+  MEMBER
 }

@@ -7,6 +7,7 @@ import {
   BanknotesIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '../../store/auth.store'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/budgets',      label: 'Budgets',      Icon: ChartBarIcon },
   { to: '/goals',        label: 'Goals',        Icon: TrophyIcon },
   { to: '/accounts',     label: 'Accounts',     Icon: BanknotesIcon },
+  { to: '/household',    label: 'Household',    Icon: UsersIcon },
   { to: '/settings',     label: 'Settings',     Icon: Cog6ToothIcon },
 ]
 

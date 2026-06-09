@@ -56,3 +56,7 @@ export class SummaryQueryDto {
 export class CreateCategoryDto {
   @IsString() @IsNotEmpty() name: string;
 }
+
+export class MonthlySummaryQueryDto {
+  @IsOptional() @Type(() => Number) @IsInt() months?: number;
+}

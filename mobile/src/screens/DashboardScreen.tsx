@@ -44,7 +44,11 @@ export default function DashboardScreen() {
     qc.invalidateQueries({ queryKey: ['transactions'] })
   }
 
-  const netWorth = accounts?.reduce((s, a) => s + a.balance, 0) ?? 0
+  const LIABILITY_TYPES = ['credit', 'loan']
+  const netWorth = accounts?.reduce((s, a) => {
+    const balance = a.balance ?? 0
+    return s + (LIABILITY_TYPES.includes(a.type) ? -balance : balance)
+  }, 0) ?? 0
   const income = summary?.income ?? 0
   const expenses = summary?.expenses ?? 0
   const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0

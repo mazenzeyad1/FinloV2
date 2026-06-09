@@ -19,6 +19,7 @@ import { GoalsModule } from '../goals/goals.module';
 import { TransfersModule } from '../transfers/transfers.module';
 import { InvestmentsModule } from '../investments/investments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { HouseholdModule } from '../household/household.module';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     PrismaModule, MailerModule, PlaidModule, AuthModule, UsersModule,
     ConnectionsModule, AccountsModule, TransactionsModule,
     BudgetsModule, GoalsModule, TransfersModule,
-    InvestmentsModule, NotificationsModule,
+    InvestmentsModule, NotificationsModule, HouseholdModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

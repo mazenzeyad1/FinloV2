@@ -23,3 +23,13 @@ export function useSyncAccounts() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
   })
 }
+
+export function useNetWorthHistory(months = 12) {
+  return useQuery({
+    queryKey: ['accounts', 'net-worth-history', months],
+    queryFn: () =>
+      api.get('/accounts/net-worth-history', { params: { months } }).then(
+        (r) => r.data as { year: number; month: number; netWorth: number }[]
+      ),
+  })
+}

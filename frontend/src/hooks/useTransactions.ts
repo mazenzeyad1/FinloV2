@@ -28,6 +28,16 @@ export function useTransactions(filters: TransactionFilters = {}) {
   })
 }
 
+export function useMonthlySummary(months = 6) {
+  return useQuery({
+    queryKey: ['transactions', 'monthly-summary', months],
+    queryFn: () =>
+      api.get('/transactions/monthly-summary', { params: { months } }).then(
+        (r) => r.data as { year: number; month: number; income: number; expenses: number }[]
+      ),
+  })
+}
+
 export function useTransactionSummary(month: number, year: number) {
   return useQuery({
     queryKey: ['transactions', 'summary', month, year],

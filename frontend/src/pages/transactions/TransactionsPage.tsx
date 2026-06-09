@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { format, isToday, isYesterday } from 'date-fns'
 import { MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import { useTransactions, useUpdateTransaction, useCategories, useBulkUpdateCategory } from '../../hooks/useTransactions'
+import { useTransactions, useUpdateTransaction, useCategories, useBulkUpdateCategory, useMonthlySummary } from '../../hooks/useTransactions'
 import { useAccounts } from '../../hooks/useAccounts'
+import { MonthlyBarChart } from '../../components/charts/MonthlyBarChart'
+import { ErrorBoundary } from '../../components/ui/ErrorBoundary'
 import { api } from '../../lib/api'
 import { toast } from '../../store/toast.store'
 import { Drawer } from '../../components/ui/Drawer'
@@ -86,6 +88,7 @@ export function TransactionsPage() {
   const { data, isLoading } = useTransactions(filters)
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
+  const { data: monthlySummary } = useMonthlySummary(6)
   const updateTx = useUpdateTransaction()
   const bulkCategory = useBulkUpdateCategory()
 
@@ -298,6 +301,16 @@ export function TransactionsPage() {
             </span>
           )}
         </div>
+      )}
+
+      {/* ── Monthly income vs expenses chart ── */}
+      {monthlySummary && monthlySummary.length > 1 && (
+        <ErrorBoundary>
+          <div className="card p-5">
+            <p className="text-[13px] font-semibold text-text-1 mb-4">Income vs expenses — last 6 months</p>
+            <MonthlyBarChart data={monthlySummary} />
+          </div>
+        </ErrorBoundary>
       )}
 
       {/* ── Bulk-action bar ── */}

@@ -1,10 +1,9 @@
-import { format, subDays } from 'date-fns'
+import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/auth.store'
 import { useAccounts } from '../../hooks/useAccounts'
-import { useTransactions } from '../../hooks/useTransactions'
+import { useTransactions, useMonthlySummary } from '../../hooks/useTransactions'
 import { MetricCard } from '../../components/ui/MetricCard'
-import { SpendingChart } from '../../components/charts/SpendingChart'
 import { DonutChart } from '../../components/charts/DonutChart'
 import { ErrorBoundary } from '../../components/ui/ErrorBoundary'
 
@@ -26,51 +25,45 @@ function localDate(dateStr: string) {
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user)
   const now = new Date()
-  const sevenDaysAgo = format(subDays(now, 6), 'yyyy-MM-dd')
-  const thirtyDaysAgo = format(subDays(now, 29), 'yyyy-MM-dd')
-  const sixtyDaysAgo = format(subDays(now, 59), 'yyyy-MM-dd')
-  const thirtyOneDaysAgo = format(subDays(now, 30), 'yyyy-MM-dd')
   const today = format(now, 'yyyy-MM-dd')
 
   const { data: accounts, isLoading: loadingAccounts } = useAccounts()
-  const { data: recentData, isLoading: loadingRecent } = useTransactions({ pageSize: 5, sortBy: 'date', sortDir: 'desc' })
-  const { data: weekData } = useTransactions({ from: sevenDaysAgo, to: today, pageSize: 200 })
-  const { data: monthData, isLoading: loadingMonth } = useTransactions({ from: thirtyDaysAgo, to: today, pageSize: 500 })
-  const { data: prevMonthData } = useTransactions({ from: sixtyDaysAgo, to: thirtyOneDaysAgo, pageSize: 500 })
 
-  const netWorth = accounts?.reduce((sum: number, a: any) => sum + a.balance, 0) ?? 0
+  // Single summary call replaces the previous 4 useTransactions fetches
+  const { data: monthlySummary, isLoading: loadingSummary } = useMonthlySummary(2)
 
-  // Compute income/expenses from last 30 days of transactions
-  const income = monthData?.data?.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0) ?? 0
-  const expenses = monthData?.data?.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0) ?? 0
+  // Recent transactions — still needed for the feed
+  const { data: recentData, isLoading: loadingRecent } = useTransactions({
+    pageSize: 5, sortBy: 'date', sortDir: 'desc',
+  })
+
+  // Donut: last 30 days of categorised expenses (small fetch, needed for chart)
+  const thirtyDaysAgo = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29), 'yyyy-MM-dd')
+  const { data: monthData } = useTransactions({ from: thirtyDaysAgo, to: today, pageSize: 500 })
+
+  const LIABILITY_TYPES = ['credit', 'loan']
+  const netWorth = accounts?.reduce((sum: number, a: any) => {
+    const balance = a.balance ?? 0
+    return sum + (LIABILITY_TYPES.includes(a.type) ? -balance : balance)
+  }, 0) ?? 0
+
+  // Current and previous month figures from the monthly summary endpoint
+  const currentMonth = monthlySummary?.[monthlySummary.length - 1]
+  const prevMonth    = monthlySummary?.[monthlySummary.length - 2]
+  const income   = currentMonth?.income   ?? 0
+  const expenses = currentMonth?.expenses ?? 0
+  const prevIncome   = prevMonth?.income   ?? 0
+  const prevExpenses = prevMonth?.expenses ?? 0
+
   const rawSavingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0
-  // Clamp for display — a 30-day window can catch little income and produce
-  // absurd values (e.g. -2000%); cap so the metric stays meaningful.
   const savingsRate = Math.max(-100, Math.min(100, rawSavingsRate))
 
-  // Trend vs the previous 30-day window
-  const prevIncome = prevMonthData?.data?.filter((t: any) => t.amount < 0).reduce((s: number, t: any) => s + Math.abs(t.amount), 0) ?? 0
-  const prevExpenses = prevMonthData?.data?.filter((t: any) => t.amount > 0).reduce((s: number, t: any) => s + t.amount, 0) ?? 0
   const pctDelta = (curr: number, prev: number) => (prev > 0 ? ((curr - prev) / prev) * 100 : null)
-  const incomeDelta = pctDelta(income, prevIncome)
+  const incomeDelta  = pctDelta(income, prevIncome)
   const expenseDelta = pctDelta(expenses, prevExpenses)
-  const fmtDelta = (d: number | null) => (d == null ? undefined : `${d >= 0 ? '+' : ''}${d.toFixed(0)}% vs prev 30d`)
+  const fmtDelta = (d: number | null) => (d == null ? undefined : `${d >= 0 ? '+' : ''}${d.toFixed(0)}% vs last month`)
 
-  const spendByDay: Record<string, number> = {}
-  for (let i = 6; i >= 0; i--) {
-    const d = format(subDays(now, i), 'EEE')
-    spendByDay[d] = 0
-  }
-  if (weekData?.data) {
-    for (const t of weekData.data) {
-      if (t.amount > 0) {
-        const d = format(localDate(t.date), 'EEE')
-        spendByDay[d] = (spendByDay[d] ?? 0) + t.amount
-      }
-    }
-  }
-  const chartData = Object.entries(spendByDay).map(([day, amount]) => ({ day, amount }))
-
+  // Donut data
   const catMap: Record<string, { name: string; value: number }> = {}
   if (monthData?.data) {
     for (const t of monthData.data) {
@@ -86,6 +79,8 @@ export function DashboardPage() {
     .slice(0, 8)
     .map((d, i) => ({ ...d, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }))
 
+  const isLoading = loadingAccounts || loadingSummary
+
   return (
     <div className="space-y-6">
       <div>
@@ -93,20 +88,21 @@ export function DashboardPage() {
         <p className="text-[14px] text-text-2 mt-0.5">Hey, {user?.firstName} 👋</p>
       </div>
 
+      {/* Metric cards */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
-        {loadingAccounts || loadingMonth ? (
+        {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[96px]" />)
         ) : (
           <>
             <MetricCard label="Net worth" value={CAD.format(netWorth)} accent />
             <MetricCard
-              label="Income (30d)"
+              label="Income (month)"
               value={CAD.format(income)}
               change={fmtDelta(incomeDelta)}
               changeType={incomeDelta == null ? 'neutral' : incomeDelta >= 0 ? 'up' : 'down'}
             />
             <MetricCard
-              label="Spend (30d)"
+              label="Spend (month)"
               value={CAD.format(expenses)}
               change={fmtDelta(expenseDelta)}
               changeType={expenseDelta == null ? 'neutral' : expenseDelta <= 0 ? 'up' : 'down'}
@@ -115,7 +111,7 @@ export function DashboardPage() {
               label="Savings rate"
               value={income > 0 ? `${savingsRate.toFixed(0)}%` : '—'}
               change={
-                income <= 0 ? 'No income in range'
+                income <= 0 ? 'No income this month'
                 : rawSavingsRate < 0 ? 'Spending exceeds income'
                 : rawSavingsRate >= 20 ? 'On track'
                 : undefined
@@ -126,17 +122,11 @@ export function DashboardPage() {
         )}
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-        <ErrorBoundary>
-          <div className="card p-5">
-            <p className="text-[13px] font-semibold text-text-1 mb-4">Spending — last 7 days</p>
-            <SpendingChart data={chartData} />
-          </div>
-        </ErrorBoundary>
-        <ErrorBoundary>
-          <div className="card p-5">
-            <p className="text-[13px] font-semibold text-text-1 mb-4">Spend by category — last 30 days</p>
-            {donutData.length > 0 ? (
+      {/* Spend by category donut */}
+      <ErrorBoundary>
+        <div className="card p-5">
+          <p className="text-[13px] font-semibold text-text-1 mb-4">Spend by category — last 30 days</p>
+          {donutData.length > 0 ? (
             <>
               <DonutChart data={donutData} />
               <div className="mt-3 space-y-1.5">
@@ -156,10 +146,10 @@ export function DashboardPage() {
               No spending in the last 30 days
             </div>
           )}
-          </div>
-        </ErrorBoundary>
-      </div>
+        </div>
+      </ErrorBoundary>
 
+      {/* Recent transactions */}
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[13px] font-semibold text-text-1">Recent transactions</p>

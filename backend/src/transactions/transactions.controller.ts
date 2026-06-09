@@ -4,7 +4,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
-import { QueryTransactionsDto, UpdateTransactionDto, BulkUpdateCategoryDto, SummaryQueryDto, CreateCategoryDto } from './dto/query.dto';
+import { QueryTransactionsDto, UpdateTransactionDto, BulkUpdateCategoryDto, SummaryQueryDto, CreateCategoryDto, MonthlySummaryQueryDto } from './dto/query.dto';
 
 @ApiTags('transactions')
 @ApiBearerAuth()
@@ -24,6 +24,12 @@ export class TransactionsController {
   @ApiOperation({ summary: 'Get income/expense summary for a month' })
   getSummary(@Request() req: any, @Query() query: SummaryQueryDto) {
     return this.service.getSummary(req.user.id, query.month, query.year);
+  }
+
+  @Get('monthly-summary')
+  @ApiOperation({ summary: 'Get income/expense totals per month for last N months' })
+  getMonthlySummary(@Request() req: any, @Query() query: MonthlySummaryQueryDto) {
+    return this.service.getMonthlySummary(req.user.id, query.months ?? 6);
   }
 
   @Get('categories')

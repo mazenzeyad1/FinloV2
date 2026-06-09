@@ -126,6 +126,45 @@ export class TransactionsService {
     return { message: 'Category deleted' };
   }
 
+  async getMonthlySummary(userId: string, months = 6) {
+    const now = new Date();
+    const windowStart = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+    const txns = await this.prisma.transaction.findMany({
+      where: { userId, pending: false, date: { gte: windowStart } },
+      select: { amount: true, date: true },
+    });
+
+    // Build a map keyed by "YYYY-MM"
+    const map = new Map<string, { income: number; expenses: number }>();
+
+    // Pre-fill all months so gaps show as zero
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      map.set(key, { income: 0, expenses: 0 });
+    }
+
+    for (const t of txns) {
+      const d = new Date(t.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const entry = map.get(key);
+      if (!entry) continue;
+      if (t.amount < 0) entry.income += Math.abs(t.amount);
+      else entry.expenses += t.amount;
+    }
+
+    return Array.from(map.entries()).map(([key, val]) => {
+      const [year, month] = key.split('-').map(Number);
+      return {
+        year,
+        month,
+        income: Math.round(val.income * 100) / 100,
+        expenses: Math.round(val.expenses * 100) / 100,
+      };
+    });
+  }
+
   async getSummary(userId: string, month: number, year: number) {
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 1);

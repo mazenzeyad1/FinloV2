@@ -26,7 +26,11 @@ export default function AccountsScreen() {
   const { data: accounts, isLoading, isRefetching, refetch } = useAccounts()
   const sync = useSyncAccounts()
 
-  const netWorth = accounts?.reduce((s, a) => s + a.balance, 0) ?? 0
+  const LIABILITY_TYPES = ['credit', 'loan']
+  const netWorth = accounts?.reduce((s, a) => {
+    const balance = a.balance ?? 0
+    return s + (LIABILITY_TYPES.includes(a.type) ? -balance : balance)
+  }, 0) ?? 0
 
   // Group accounts by connectionId
   const byConnection: Record<string, typeof accounts> = {}

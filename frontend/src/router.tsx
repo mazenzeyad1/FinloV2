@@ -16,6 +16,8 @@ const BudgetsPage          = lazy(() => import('./pages/budgets/BudgetsPage').th
 const GoalsPage            = lazy(() => import('./pages/goals/GoalsPage').then(m => ({ default: m.GoalsPage })))
 const AccountsPage         = lazy(() => import('./pages/accounts/AccountsPage').then(m => ({ default: m.AccountsPage })))
 const SettingsPage         = lazy(() => import('./pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const HouseholdPage        = lazy(() => import('./pages/household/HouseholdPage').then(m => ({ default: m.HouseholdPage })))
+const AcceptInvitePage     = lazy(() => import('./pages/household/AcceptInvitePage').then(m => ({ default: m.AcceptInvitePage })))
 
 function PageFallback() {
   return (
@@ -34,6 +36,7 @@ export const router = createBrowserRouter([
   { path: '/reset-password',  element: s(<ResetPasswordPage />) },
   { path: '/verify-email',    element: s(<VerifyEmailPage />) },
   { path: '/verify-email-change', element: s(<VerifyEmailChangePage />) },
+  { path: '/household/accept',    element: s(<AcceptInvitePage />) },
   {
     path: '/check-email',
     element: (
@@ -64,6 +67,7 @@ export const router = createBrowserRouter([
       { path: '/budgets',      element: s(<BudgetsPage />) },
       { path: '/goals',        element: s(<GoalsPage />) },
       { path: '/accounts',     element: s(<AccountsPage />) },
+      { path: '/household',    element: s(<HouseholdPage />) },
       { path: '/settings',     element: s(<SettingsPage />) },
     ],
   },

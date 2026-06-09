@@ -72,6 +72,10 @@ export class GoalsService {
     const goal = await this.prisma.goal.findUnique({ where: { id: goalId } });
     if (!goal) throw AppExceptions.notFound(ERROR_CODES.RESOURCE_NOT_FOUND);
     if (goal.userId !== userId) throw AppExceptions.forbidden();
+    if (dto.amount <= 0) throw AppExceptions.badRequest(ERROR_CODES.INVALID_INPUT);
+
+    const remaining = goal.targetAmount - goal.currentAmount;
+    if (dto.amount > remaining) throw AppExceptions.badRequest(ERROR_CODES.INVALID_INPUT);
 
     const [contribution] = await this.prisma.$transaction([
       this.prisma.goalContribution.create({
