@@ -11,17 +11,32 @@ export default function LoginScreen({ navigation }: NativeStackScreenProps<any>)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const { setAccessToken, setUser } = useAuthStore()
+  const { setTokens, setUser } = useAuthStore()
 
   const submit = async () => {
     if (!email || !password) return
     setLoading(true)
     try {
-      const data = await api.post<{ accessToken: string; user: any }>('/auth/login', { email, password })
-      await setAccessToken(data.accessToken)
+      const data = await api.post<{ accessToken: string; refreshToken?: string; user: any }>(
+        '/auth/login',
+        { email, password },
+      )
+      await setTokens(data.accessToken, data.refreshToken)
       setUser(data.user)
-    } catch {
-      Alert.alert('Sign in failed', 'Invalid email or password.')
+    } catch (err: any) {
+      const status = err?.status
+      if (status === 401) {
+        Alert.alert('Sign in failed', 'Invalid email or password.')
+      } else if (status === 403) {
+        Alert.alert('Email not verified', 'Please verify your email before signing in.')
+      } else if (!status) {
+        Alert.alert(
+          'Connection error',
+          "Can't reach the server. Check your internet connection and try again.",
+        )
+      } else {
+        Alert.alert('Something went wrong', 'Please try again in a moment.')
+      }
     } finally {
       setLoading(false)
     }

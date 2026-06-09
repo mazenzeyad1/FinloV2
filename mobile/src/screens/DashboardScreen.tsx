@@ -165,7 +165,7 @@ function Tile({ label, value, loading, accent }: {
   )
 }
 
-function SpendingBars({ days }: { days: { label: string; amount: number }[] }) {
+function SpendingBars({ days }: { days: { key?: string; label: string; amount: number }[] }) {
   const max = Math.max(...days.map(d => d.amount), 0.01)
   return (
     <View style={styles.bars}>

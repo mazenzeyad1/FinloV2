@@ -25,28 +25,39 @@ export class AuthController {
   @ApiOperation({ summary: 'Login and receive access token' })
   @ApiOkResponse({ description: 'Returns accessToken and user' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const { accessToken, refreshToken, user } = await this.authService.login(dto);
+    // Web stores the refresh token in an httpOnly cookie. Native clients (React
+    // Native) have no cookie jar, so they opt in via the `x-client: mobile`
+    // header and receive the refresh token in the body to store securely.
     res.cookie(COOKIE_NAME, refreshToken, COOKIE_OPTIONS);
-    return { accessToken, user };
+    return isMobileClient(req) ? { accessToken, refreshToken, user } : { accessToken, user };
   }
 
   @Post('refresh')
-  @ApiOperation({ summary: 'Refresh access token using httpOnly cookie' })
+  @ApiOperation({ summary: 'Refresh access token using httpOnly cookie or body token' })
   @ApiOkResponse({ description: 'Returns new accessToken' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   async refresh(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
-    const token = req.cookies?.[COOKIE_NAME];
+    // Mobile sends the refresh token in the request body; web relies on the cookie.
+    const bodyToken = (req.body as { refreshToken?: string })?.refreshToken;
+    const token = bodyToken ?? req.cookies?.[COOKIE_NAME];
     if (!token) throw new UnauthorizedException('No refresh token');
     const { accessToken, refreshToken } = await this.authService.refresh(token);
     res.cookie(COOKIE_NAME, refreshToken, COOKIE_OPTIONS);
-    return { accessToken };
+    // Rotation: hand the rotated refresh token back to body-based (mobile) clients.
+    return bodyToken ? { accessToken, refreshToken } : { accessToken };
   }
 
   @Post('logout')
   @ApiOperation({ summary: 'Logout and clear refresh token cookie' })
   async logout(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
-    const token = req.cookies?.[COOKIE_NAME];
+    const bodyToken = (req.body as { refreshToken?: string })?.refreshToken;
+    const token = bodyToken ?? req.cookies?.[COOKIE_NAME];
     if (token) await this.authService.revokeRefreshToken(token);
     res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
     return { ok: true };
@@ -75,4 +86,9 @@ export class AuthController {
   @ApiOkResponse({ description: 'Returns current user profile' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   me(@Request() req: any) { return this.authService.me(req.user.id); }
+}
+
+/** Native clients identify themselves with the `x-client: mobile` header. */
+function isMobileClient(req: ExpressRequest): boolean {
+  return req.headers['x-client'] === 'mobile';
 }

@@ -20,8 +20,20 @@ export default function RegisterScreen({ navigation }: NativeStackScreenProps<an
       Alert.alert('Check your email', 'We sent you a verification link.', [
         { text: 'OK', onPress: () => navigation.navigate('Login') },
       ])
-    } catch {
-      Alert.alert('Registration failed', 'Please try again.')
+    } catch (err: any) {
+      const status = err?.status
+      if (status === 409) {
+        Alert.alert('Email already registered', 'Try signing in instead.')
+      } else if (status === 400) {
+        Alert.alert('Check your details', err?.message ?? 'Please review the form and try again.')
+      } else if (!status) {
+        Alert.alert(
+          'Connection error',
+          "Can't reach the server. Check your internet connection and try again.",
+        )
+      } else {
+        Alert.alert('Registration failed', 'Please try again in a moment.')
+      }
     } finally {
       setLoading(false)
     }
