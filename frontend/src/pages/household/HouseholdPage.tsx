@@ -39,7 +39,7 @@ function InitialScreen({ onCreate }: { onCreate: (name: string) => void }) {
       setShowModal(false)
       toast.success('Household created!')
     } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? 'Failed to create household')
+      toast.error(e?.message ?? 'Failed to create household')
     }
   }
 
@@ -128,7 +128,7 @@ function MembersSection({
       setShowInvite(false)
       toast.success(`Invite sent to ${email}`)
     } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? 'Failed to send invite')
+      toast.error(e?.message ?? 'Failed to send invite')
     }
   }
 
@@ -138,7 +138,7 @@ function MembersSection({
       await remove.mutateAsync(userId)
       toast.success(`${name} removed`)
     } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? 'Failed to remove member')
+      toast.error(e?.message ?? 'Failed to remove member')
     }
   }
 
@@ -148,7 +148,7 @@ function MembersSection({
       await leave.mutateAsync()
       toast.success('You have left the household')
     } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? 'Failed to leave')
+      toast.error(e?.message ?? 'Failed to leave')
     }
   }
 

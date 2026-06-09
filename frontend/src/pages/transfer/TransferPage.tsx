@@ -51,7 +51,7 @@ export function TransferPage() {
       setEmail(''); setMemo(''); setAmount('50')
       setTab('history')
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Failed to send')
+      setError(e?.message ?? 'Failed to send')
     }
   }
 

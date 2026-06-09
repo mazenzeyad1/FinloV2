@@ -30,9 +30,9 @@ export function AcceptInvitePage() {
       },
       onError: (err: any) => {
         setStatus('error')
-        const msg = err?.response?.data?.message ?? 'Failed to accept invite'
+        const msg = err?.message ?? 'Failed to accept invite'
         // If unauthenticated, redirect to login with return URL
-        if (err?.response?.status === 401) {
+        if (err?.status === 401) {
           navigate(`/login?redirect=/household/accept?token=${token}`)
           return
         }

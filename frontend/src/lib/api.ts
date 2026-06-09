@@ -51,6 +51,7 @@ api.interceptors.response.use(
       customError.timestamp = error.timestamp
       customError.path = error.path
       customError.method = error.method
+      customError.status = err.response.status
       return Promise.reject(customError)
     }
 
