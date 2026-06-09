@@ -98,13 +98,32 @@ function MembersSection({
 }) {
   const [showInvite, setShowInvite] = useState(false)
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
   const invite = useInviteMember()
   const remove = useRemoveMember()
   const leave = useLeaveHousehold()
 
+  const validateEmail = (value: string): boolean => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setEmailError('Email is required')
+      return false
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(trimmed)) {
+      setEmailError('Please enter a valid email address')
+      return false
+    }
+    setEmailError('')
+    return true
+  }
+
   const handleInvite = async () => {
+    if (!validateEmail(email)) return
+    
     try {
-      await invite.mutateAsync(email)
+      await invite.mutateAsync(email.trim())
       setEmail('')
       setShowInvite(false)
       toast.success(`Invite sent to ${email}`)
@@ -206,25 +225,39 @@ function MembersSection({
         </div>
       )}
 
-      <Modal open={showInvite} onClose={() => setShowInvite(false)} title="Invite Member">
+      <Modal open={showInvite} onClose={() => {
+        setShowInvite(false)
+        setEmail('')
+        setEmailError('')
+      }} title="Invite Member">
         <Field label="Email address">
           {(id) => (
-            <input
-              id={id}
-              className="input"
-              type="email"
-              placeholder="partner@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <>
+              <input
+                id={id}
+                className={`input ${emailError ? 'border-red-500' : ''}`}
+                type="email"
+                placeholder="partner@example.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setEmailError('')
+                }}
+              />
+              {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
+            </>
           )}
         </Field>
         <p className="text-sm text-text-2 mt-2">
           They'll receive an email with a link to join your household.
         </p>
         <div className="flex justify-end gap-3 mt-6">
-          <button className="btn btn-ghost" onClick={() => setShowInvite(false)}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleInvite} disabled={invite.isPending || !email}>
+          <button className="btn btn-ghost" onClick={() => {
+            setShowInvite(false)
+            setEmail('')
+            setEmailError('')
+          }}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleInvite} disabled={invite.isPending || !email || !!emailError}>
             {invite.isPending ? 'Sending…' : 'Send Invite'}
           </button>
         </div>
