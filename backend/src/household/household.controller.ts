@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -34,6 +35,15 @@ export class HouseholdController {
   @Post('invite')
   invite(@Request() req: any, @Body() dto: InviteMemberDto) {
     return this.service.inviteMember(req.user.id, dto);
+  }
+
+  /**
+   * Guard against mistaken GET requests to invite endpoint.
+   * The invite endpoint only accepts POST requests with an email in the body.
+   */
+  @Get('invite')
+  inviteGetNotAllowed() {
+    throw new BadRequestException('The invite endpoint only accepts POST requests. Please provide the email address in the request body.');
   }
 
   /**
